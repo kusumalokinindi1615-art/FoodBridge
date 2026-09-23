@@ -83,7 +83,12 @@ export const Login = () => {
         <form onSubmit={handleSubmit}>
           <SelectInput
             label="Mock Login Role"
-            options={['DONOR','NGO','VOLUNTEER','ADMIN']}
+            options={[
+              { value: 'DONOR', label: 'Donor' },
+              { value: 'NGO', label: 'NGO' },
+              { value: 'VOLUNTEER', label: 'Volunteer' },
+              { value: 'ADMIN', label: 'Admin' },
+            ]}
             value={role}
             onChange={e => setRole(e.target.value)}
           />
@@ -165,7 +170,7 @@ export const Register = () => {
             <Link key={r} to={`/register/${r.toLowerCase()}`}
               className={`flex-1 py-1.5 text-center text-xs font-bold rounded-xl transition-all
                 ${role === r ? 'bg-white shadow-sm text-primary' : 'text-gray-500 hover:text-gray-700'}`}>
-              {r === 'DONOR' ? 'Donor' : r === 'NGO' ? 'NGO' : r === 'VOLUNTEER' ? 'Driver' : 'Admin'}
+              {r === 'DONOR' ? 'Donor' : r === 'NGO' ? 'NGO' : r === 'VOLUNTEER' ? 'Volunteer' : 'Admin'}
             </Link>
           ))}
         </div>

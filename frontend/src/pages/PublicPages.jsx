@@ -110,7 +110,7 @@ export const Register = () => (
         <Select label="Role" options={[
           {value: 'DONOR', label: 'Donor'},
           {value: 'NGO', label: 'NGO (Receiver)'},
-          {value: 'VOLUNTEER', label: 'Volunteer Driver'},
+          {value: 'VOLUNTEER', label: 'Volunteer'},
         ]} />
         <FormInput label="Password" type="password" required />
         <FormInput label="Confirm Password" type="password" required />

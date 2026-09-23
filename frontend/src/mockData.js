@@ -22,7 +22,7 @@ const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000).toISOString();
 export const mockUsers = [
   { id: '1', name: 'Hotel Grand', email: 'donor@test.com', role: 'DONOR', location: 'Downtown Tech Hub' },
   { id: '2', name: 'Helping Hands NGO', email: 'ngo@test.com', role: 'NGO', location: 'City Center' },
-  { id: '3', name: 'John Driver', email: 'vol@test.com', role: 'VOLUNTEER', location: 'Westside' },
+  { id: '3', name: 'John Volunteer', email: 'vol@test.com', role: 'VOLUNTEER', location: 'Westside' },
   { id: '4', name: 'Admin User', email: 'admin@test.com', role: 'ADMIN', location: 'HQ' }
 ];
 
@@ -83,7 +83,7 @@ export const mockDonations = [
     ngoId: '2',
     ngoName: 'Helping Hands NGO',
     volunteerId: '3',
-    volunteerName: 'John Driver',
+    volunteerName: 'John Volunteer',
     preparedDate: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(),
     safeUntil: new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     storageType: 'Room Temperature',
