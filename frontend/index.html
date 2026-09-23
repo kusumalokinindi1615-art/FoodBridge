@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FoodBridge - Share Food. Save Food. Serve Communities.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              primary:   { DEFAULT: '#0d6e8a', light: '#1a8fab', dark: '#094f64' },
+              teal:      { DEFAULT: '#3aada8', light: '#5dc5c0', dark: '#2a8a86' },
+              aqua:      { DEFAULT: '#b8e6e4', light: '#d4f0ef' },
+              accent:    { DEFAULT: '#f59e0b', light: '#fbbf24' },
+              surface:   '#ffffff',
+              background:'#f8fbfc',
+            },
+            fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+            borderRadius: { '2xl': '1rem', '3xl': '1.5rem', '4xl': '2rem' },
+            boxShadow: {
+              soft:  '0 4px 24px -4px rgba(13,110,138,.10)',
+              card:  '0 2px 16px 0 rgba(13,110,138,.08)',
+              teal:  '0 8px 32px -4px rgba(58,173,168,.25)',
+            },
+          }
+        }
+      }
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+      body { background-color:#f8fbfc; font-family:'Inter',sans-serif; }
+      .page-transition { animation: fadeUp .3s ease; }
+      @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+      /* Botanical decoration styles */
+      .botanical-corner { position:absolute; pointer-events:none; opacity:.55; }
+      .wave-bottom { border-radius: 0 0 50% 50% / 0 0 40px 40px; }
+      /* Gradient text */
+      .gradient-text { background: linear-gradient(135deg,#0d6e8a,#3aada8); -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
