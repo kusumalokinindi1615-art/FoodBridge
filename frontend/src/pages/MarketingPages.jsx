@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Card, PageContainer, SectionHeading, BotanicalBg } from '../components/PublicUI';
+import { Button, PageContainer, SectionHeading, BotanicalBg } from '../components/PublicUI';
 import { statsAPI } from '../api/api';
 
 /* ─── HOME ──────────────────────────────────────────── */
@@ -188,36 +188,6 @@ export const Home = () => {
           </div>
         ))}
       </div>
-    </section>
-
-    {/* ── Sign Up Options ── */}
-    <section className="py-20 bg-background">
-      <PageContainer>
-        <SectionHeading title="Join the Movement" subtitle="Choose your role in the FoodBridge community." />
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-6">
-          {[
-            { role:'donor',     icon:'fa-box-open',          color:'from-blue-500 to-blue-600',    label:'Donor',     desc:'I have surplus food to donate from a restaurant or event.' },
-            { role:'ngo',       icon:'fa-hand-holding-heart',color:'from-teal to-teal-dark',       label:'NGO',       desc:'We represent an organization receiving food for our community.' },
-            { role:'volunteer', icon:'fa-car',                color:'from-purple-500 to-purple-600',label:'Volunteer', desc:'I want to help by driving food from donors to NGOs.' },
-            { role:'admin',     icon:'fa-user-shield',        color:'from-accent to-orange-500',   label:'Admin',     desc:'I manage the FoodBridge platform and its users.' },
-          ].map(r => (
-            <Card key={r.role} className="flex flex-col h-full hover:-translate-y-2 transition-all duration-300 hover:shadow-teal">
-              <div className="p-7 flex flex-col flex-1 items-center text-center">
-                <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${r.color} flex items-center justify-center mb-5 shadow-lg`}>
-                  <i className={`fas ${r.icon} text-xl text-white`}></i>
-                </div>
-                <h3 className="text-lg font-bold text-gray-900 mb-2">{r.label}</h3>
-                <p className="text-sm text-gray-500 flex-1 leading-relaxed mb-6">{r.desc}</p>
-                <Link to={`/register/${r.role}`} className="w-full">
-                  <Button variant={r.role === 'admin' ? 'outline' : 'primary'} className="w-full">
-                    Sign Up as {r.label}
-                  </Button>
-                </Link>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </PageContainer>
     </section>
   </div>
   );
