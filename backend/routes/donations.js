@@ -155,6 +155,11 @@ router.patch('/:id/status', protect, async (req, res) => {
         donation.ngoId = req.user._id;
         donation.ngoName = req.user.name;
         donation.deliveryLocation = deliveryLocation || req.user.location || 'NGO address';
+        donation.acceptedAt = new Date();
+        // Snapshot the accepting NGO's GPS (if provided) — scoped to this order only
+        if (req.body.ngoLat != null && req.body.ngoLng != null) {
+          donation.ngoLocation = { lat: Number(req.body.ngoLat), lng: Number(req.body.ngoLng), updatedAt: new Date() };
+        }
         await notify(io, {
           userId: donation.donorId,
           text: `Your donation "${donation.title}" was accepted by ${req.user.name}!`,
@@ -232,6 +237,62 @@ router.patch('/:id/status', protect, async (req, res) => {
     res.json({ donation });
   } catch (err) {
     res.status(400).json({ message: err.message });
+  }
+});
+
+/* ─── GET /api/donations/:id/tracking ──────────────────
+   Order-scoped GPS tracking. Only the donor who owns the order, the
+   assigned NGO, or the assigned volunteer may read the NGO location. */
+router.get('/:id/tracking', protect, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid donation id' });
+    const donation = await Donation.findById(req.params.id);
+    if (!donation) return res.status(404).json({ message: 'Donation not found' });
+
+    const uid = req.user._id.toString();
+    const allowed =
+      donation.donorId?.toString() === uid ||
+      donation.ngoId?.toString() === uid ||
+      donation.volunteerId?.toString() === uid;
+    if (!allowed) return res.status(403).json({ message: 'Not your order' });
+
+    res.json({
+      tracking: {
+        donationId: donation._id,
+        status: donation.status,
+        acceptedAt: donation.acceptedAt || null,
+        ngoName: donation.ngoName || null,
+        ngoLocation: donation.ngoLocation || null,
+        deliveryLocation: donation.deliveryLocation || null,
+        pickupLocation: donation.location,
+        deliveredAt: donation.deliveredAt || null,
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+/* ─── PATCH /api/donations/:id/ngo-location ────────────
+   The ASSIGNED NGO pushes live GPS for this order only. */
+router.patch('/:id/ngo-location', protect, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'Invalid donation id' });
+    const donation = await Donation.findById(req.params.id);
+    if (!donation) return res.status(404).json({ message: 'Donation not found' });
+    if (donation.ngoId?.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Only the assigned NGO can update its location' });
+    }
+    const { lat, lng } = req.body;
+    if (lat == null || lng == null) return res.status(400).json({ message: 'lat and lng are required' });
+    donation.ngoLocation = { lat: Number(lat), lng: Number(lng), updatedAt: new Date() };
+    await donation.save();
+    getIo(req)?.to(`user:${donation.donorId}`).emit('ngoLocation', {
+      donationId: donation._id, ngoLocation: donation.ngoLocation,
+    });
+    res.json({ ngoLocation: donation.ngoLocation });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
 });
 

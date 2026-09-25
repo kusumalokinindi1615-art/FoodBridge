@@ -36,6 +36,10 @@ app.use('/api/donations', require('./routes/donations'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/stats', require('./routes/stats'));
+app.use('/api/uploads', require('./routes/uploads'));
+
+/* ─── Static: uploaded images (food photos etc.) ─────── */
+app.use('/uploads', express.static(require('path').join(__dirname, 'uploads')));
 
 /* ─── 404 + error handler ────────────────────────────── */
 app.use((req, res) => res.status(404).json({ message: 'Route not found' }));

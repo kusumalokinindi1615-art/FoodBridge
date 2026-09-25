@@ -30,12 +30,19 @@ const donationSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] }, // [lng, lat]
     },
     deliveryLocation: { type: String, trim: true },
-    imageUrl: { type: String, default: 'https://images.unsplash.com/photo-1490818387583-1baba5e638ca?w=800&q=80' },
+    imageUrl: { type: String, default: '' }, // empty → frontend falls back to placeholder
     // Lifecycle
     status: { type: String, enum: STATUS_FLOW, default: 'AVAILABLE' },
     donorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     ngoId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     ngoName: { type: String },
+    acceptedAt: { type: Date },
+    // Live GPS of the ASSIGNED NGO — scoped to this order only
+    ngoLocation: {
+      lat: { type: Number },
+      lng: { type: Number },
+      updatedAt: { type: Date },
+    },
     volunteerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     volunteerName: { type: String },
     deliveredAt: { type: Date },

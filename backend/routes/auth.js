@@ -88,4 +88,27 @@ router.get('/me', protect, async (req, res) => {
   res.json({ user: publicUser(req.user) });
 });
 
+/* ─── PATCH /api/auth/profile ──────────────────────────
+   Edit permitted profile fields. Email/password/role are protected —
+   changing them would require separate verified flows. */
+router.patch('/profile', protect, async (req, res) => {
+  try {
+    const allowed = ['name', 'phone', 'location', 'contactPerson'];
+    const updates = {};
+    allowed.forEach((f) => {
+      if (req.body[f] !== undefined) updates[f] = req.body[f];
+    });
+    if (updates.name !== undefined && !String(updates.name).trim()) {
+      return res.status(400).json({ message: 'Name cannot be empty' });
+    }
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+    res.json({ user: publicUser(user) });
+  } catch (err) {
+    res.status(400).json({ message: err.message || 'Profile update failed' });
+  }
+});
+
 module.exports = router;

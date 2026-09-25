@@ -15,6 +15,16 @@ export const authAPI = {
   login: async (email, password) => (await api.post('/api/auth/login', { email, password })).data,
   register: async (payload) => (await api.post('/api/auth/register', payload)).data,
   me: async () => (await api.get('/api/auth/me')).data,
+  updateProfile: async (payload) => (await api.patch('/api/auth/profile', payload)).data,
+};
+
+/* ─── Uploads (multipart) ───────────────────────────── */
+export const uploadsAPI = {
+  image: async (file) => {
+    const fd = new FormData();
+    fd.append('image', file);
+    return (await api.post('/api/uploads', fd, { headers: { 'Content-Type': 'multipart/form-data' } })).data;
+  },
 };
 
 /* ─── Donations ──────────────────────────────────────── */
@@ -24,6 +34,9 @@ export const donationsAPI = {
   create: async (payload) => (await api.post('/api/donations', payload)).data,
   updateStatus: async (id, status, extra = {}) =>
     (await api.patch(`/api/donations/${id}/status`, { status, ...extra })).data,
+  tracking: async (id) => (await api.get(`/api/donations/${id}/tracking`)).data,
+  pushNgoLocation: async (id, lat, lng) =>
+    (await api.patch(`/api/donations/${id}/ngo-location`, { lat, lng })).data,
 };
 
 /* ─── Notifications ──────────────────────────────────── */

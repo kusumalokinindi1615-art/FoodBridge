@@ -3,6 +3,7 @@ import { Button, Card, StatusBadge } from '../components/PublicUI';
 import { FormInput, Modal } from '../components/PublicUI2';
 import { useGlobalState } from '../context/GlobalState';
 import { TrackingUI } from '../components/TrackingUI';
+import { donationsAPI } from '../api/api';
 
 export const NGODashboard = () => {
   const { currentUser, donations, notifications, updateDonationStatus, markNotificationsRead } = useGlobalState();
@@ -11,6 +12,9 @@ export const NGODashboard = () => {
   const [showModal, setShowModal] = useState(false);
   const [accepting, setAccepting] = useState(false);
   const [actionError, setActionError] = useState('');
+  // per-order live GPS sharing state
+  const [sharingId, setSharingId] = useState(null);
+  const [shareMsg, setShareMsg] = useState('');
 
   const available = donations.filter(d => d.status === 'AVAILABLE');
   const myAccepted = donations.filter(d => d.ngoId === currentUser?.id);
@@ -20,12 +24,49 @@ export const NGODashboard = () => {
   const confirmAccept = async () => {
     setAccepting(true); setActionError('');
     try {
-      await updateDonationStatus(selected.id, 'NGO_ACCEPTED', { deliveryLocation: dest });
+      // capture NGO GPS at accept time (best-effort — order is still accepted without it)
+      let ngoLat, ngoLng;
+      try {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation ? navigator.geolocation.getCurrentPosition(res, rej, { timeout: 5000 }) : rej(new Error('no gps')));
+        ngoLat = pos.coords.latitude; ngoLng = pos.coords.longitude;
+      } catch { /* permission denied / unavailable → proceed without GPS */ }
+      await updateDonationStatus(selected.id, 'NGO_ACCEPTED', { deliveryLocation: dest, ngoLat, ngoLng });
       setShowModal(false); setSelected(null);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not accept this donation.');
     } finally {
       setAccepting(false);
+    }
+  };
+
+  /* Share/cancel live GPS for one accepted order — donor sees it in My Orders */
+  const toggleShareLocation = async (d) => {
+    setShareMsg('');
+    if (sharingId === d.id) { setSharingId(null); return; } // stop sharing
+    if (!('geolocation' in navigator)) {
+      setShareMsg('Geolocation is not supported by your browser.');
+      return;
+    }
+    try {
+      const pos = await new Promise((res, rej) =>
+        navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy: true, timeout: 8000 }));
+      await donationsAPI.pushNgoLocation(d.id, pos.coords.latitude, pos.coords.longitude);
+      setSharingId(d.id);
+      setShareMsg(`Sharing live location for "${d.title}"`);
+      // keep pushing every 30s while sharing this order
+      const timer = setInterval(async () => {
+        navigator.geolocation.getCurrentPosition(async (p) => {
+          try { await donationsAPI.pushNgoLocation(d.id, p.coords.latitude, p.coords.longitude); } catch { /* order gone */ }
+        }, () => {}, { enableHighAccuracy: true });
+      }, 30000);
+      window.__ngoShareTimer?.[d.id] && clearInterval(window.__ngoShareTimer[d.id]);
+      (window.__ngoShareTimer ||= {})[d.id] = timer;
+    } catch (err) {
+      if (err?.code === 1) setShareMsg('Location permission denied — enable it in your browser to share GPS.');
+      else if (err?.code === 2) setShareMsg('GPS unavailable right now.');
+      else if (err?.code === 3) setShareMsg('GPS timed out. Try again.');
+      else setShareMsg(err?.response?.data?.message || 'Could not share location.');
     }
   };
 
@@ -73,8 +114,31 @@ export const NGODashboard = () => {
                 <i className="fas fa-truck text-teal"></i> Accepted & Tracking
               </h2>
               <div className="space-y-5">
-                {myAccepted.map(d => <TrackingUI key={d.id} donation={d}/>)}
+                {myAccepted.map(d => (
+                  <div key={d.id}>
+                    {/* Food photo from the donor's actual upload */}
+                    {d.imageUrl && (
+                      <img src={d.imageUrl} alt={d.title}
+                        onError={(e) => { e.target.style.display = 'none'; }}
+                        className="w-full h-40 object-cover rounded-3xl mb-3 shadow-sm" />
+                    )}
+                    <TrackingUI donation={d} />
+                    {['NGO_ACCEPTED','VOLUNTEER_ASSIGNED','PICKUP_STARTED','FOOD_COLLECTED','DELIVERY_STARTED'].includes(d.status) && (
+                      <div className="mt-3 flex items-center gap-3 flex-wrap">
+                        <Button variant={sharingId === d.id ? 'outline' : 'primary'} className="text-sm"
+                          onClick={() => toggleShareLocation(d)}>
+                          <i className={`fas ${sharingId === d.id ? 'fa-location-crosshairs-slash' : 'fa-location-crosshairs'} mr-2`}></i>
+                          {sharingId === d.id ? 'Stop Sharing GPS' : 'Share Live Location'}
+                        </Button>
+                        {sharingId === d.id && (
+                          <span className="text-xs text-teal font-semibold"><i className="fas fa-circle animate-pulse mr-1 text-[6px]"></i>Donor can see your GPS</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
+              {shareMsg && <p className="mt-3 text-xs text-gray-600 bg-gray-50 border border-gray-200 rounded-xl px-4 py-2">{shareMsg}</p>}
             </section>
           )}
         </div>

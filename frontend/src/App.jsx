@@ -14,6 +14,7 @@ import { DonorDashboard, DonateFood } from './pages/DonorPages';
 import { NGODashboard } from './pages/NGOPages';
 import { VolunteerDashboard } from './pages/VolunteerPages';
 import { AdminDashboard } from './pages/AdminPages';
+import { MyProfile } from './pages/ProfilePage';
 
 /* ─── Dashboard sidebar layout ──────────────────────── */
 const DashboardLayout = ({ role, children }) => {
@@ -66,6 +67,19 @@ const DashboardLayout = ({ role, children }) => {
 
       {/* Content */}
       <div className="flex-1 overflow-x-hidden pb-20 md:pb-0">
+        {/* Top-right user menu: My Profile + Logout */}
+        <div className="flex justify-end px-6 pt-4">
+          <div className="flex items-center gap-2">
+            <Link to={`/${role.toLowerCase()}/profile`}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-primary bg-white border border-teal/30 rounded-full shadow-sm hover:bg-teal/5 transition-colors">
+              <i className="fas fa-user text-teal text-xs"></i> My Profile
+            </Link>
+            <Link to="/" onClick={logout}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-semibold text-red-500 bg-white border border-red-100 rounded-full shadow-sm hover:bg-red-50 transition-colors">
+              <i className="fas fa-right-from-bracket text-xs"></i> Logout
+            </Link>
+          </div>
+        </div>
         {children}
       </div>
     </div>
@@ -114,6 +128,8 @@ function App() {
           <Route path="/ngo/dashboard"   element={<ProtectedRoute allowedRoles={['NGO']}><NGODashboard /></ProtectedRoute>} />
           <Route path="/volunteer/dashboard" element={<ProtectedRoute allowedRoles={['VOLUNTEER']}><VolunteerDashboard /></ProtectedRoute>} />
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
+          <Route path="/donor/profile" element={<ProtectedRoute allowedRoles={['DONOR']}><MyProfile /></ProtectedRoute>} />
+          <Route path="/ngo/profile" element={<ProtectedRoute allowedRoles={['NGO']}><MyProfile /></ProtectedRoute>} />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />
