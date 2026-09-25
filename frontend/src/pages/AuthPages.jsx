@@ -53,7 +53,8 @@ const AuthPanel = ({ children, image, quote }) => (
 export const Login = () => {
   const navigate = useNavigate();
   const { login } = useGlobalState();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
+  const [role, setRole] = useState('');
   const [password, setPassword] = useState('');
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState({});
@@ -62,7 +63,8 @@ export const Login = () => {
 
   const validate = () => {
     const e = {};
-    if (!email) e.email = 'Email is required';
+    if (!username) e.username = 'Username is required';
+    if (!role) e.role = 'Please select a role';
     if (!password) e.password = 'Password is required';
     setErrors(e);
     return !Object.keys(e).length;
@@ -74,10 +76,20 @@ export const Login = () => {
     if (!validate()) return;
     setSubmitting(true);
     try {
-      const user = await login(email, password);
+      const user = await login(username, password);
+      if (user.role.toLowerCase() !== role.toLowerCase()) {
+        setServerError('Invalid role for this account.');
+        setSubmitting(false);
+        return;
+      }
       navigate(`/${user.role.toLowerCase()}/dashboard`);
     } catch (err) {
-      setServerError(err?.response?.data?.message || 'Login failed. Is the backend running?');
+      const msg = err?.response?.data?.message || '';
+      setServerError(
+        msg.includes('Invalid') || msg.includes('invalid')
+          ? 'Invalid username or password.'
+          : (msg || 'Login failed. Is the backend running?')
+      );
     } finally {
       setSubmitting(false);
     }
@@ -90,7 +102,23 @@ export const Login = () => {
         <p className="text-sm text-gray-400 mb-8">Sign in to your FoodBridge account.</p>
 
         <form onSubmit={handleSubmit}>
-          <FormInput label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} error={errors.email} />
+          <FormInput label="Username" type="text" value={username} onChange={e => setUsername(e.target.value)} error={errors.username} />
+          <div className="mb-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-1.5">Role</label>
+            <select
+              className={`w-full px-4 py-3 text-sm rounded-2xl border transition-all bg-gray-50 focus:bg-white focus:outline-none focus:ring-2
+                ${errors.role ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-teal focus:border-transparent'}`}
+              value={role}
+              onChange={e => setRole(e.target.value)}
+            >
+              <option value="" disabled>Select your role</option>
+              <option value="DONOR">Donor</option>
+              <option value="VOLUNTEER">Volunteer</option>
+              <option value="NGO">NGO</option>
+              <option value="ADMIN">Admin</option>
+            </select>
+            {errors.role && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><i className="fas fa-circle-exclamation"></i>{errors.role}</p>}
+          </div>
           <div className="relative">
             <FormInput label="Password" type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />
             <button type="button" onClick={() => setShowPwd(!showPwd)}

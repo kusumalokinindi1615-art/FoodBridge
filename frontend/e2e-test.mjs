@@ -24,23 +24,28 @@ async function setInput(page, el, value) {
   );
 }
 
-async function login(page, email, pwd) {
+async function login(page, email, pwd, role) {
   await page.goto(`${BASE}/login`, { waitUntil: 'networkidle2', timeout: 30000 });
-  await page.waitForSelector('input[type="email"]', { timeout: 15000 });
+  await page.waitForSelector('input[type="text"]', { timeout: 15000 });
   await sleep(500); // let React settle (StrictMode double-mount)
+
+  
 
   // React-safe fill + verify (page.type can lose values on re-mount)
   for (let attempt = 0; attempt < 3; attempt++) {
-    const emailEl = await page.$('input[type="email"]');
+    const userEl = await page.$('input[type="text"]');
     const pwdEl = await page.$('input[type="password"]');
-    await setInput(page, emailEl, email);
+    const selEl = await page.$('select');
+    await setInput(page, userEl, email);
+    await setInput(page, selEl, role);
     await setInput(page, pwdEl, pwd);
 
     const filled = await page.evaluate(() => ({
-      email: document.querySelector('input[type="email"]').value,
+      user: document.querySelector('input[type="text"]').value,
+      role: document.querySelector('select').value,
       pwd: document.querySelector('input[type="password"]').value,
     }));
-    if (filled.email === email && filled.pwd === pwd) break;
+    if (filled.user === email && filled.role === role && filled.pwd === pwd) break;
     await sleep(600);
   }
 
@@ -76,7 +81,7 @@ const run = async () => {
     log(true, `Landing page loads — "${await page.title()}"`);
 
     /* ─── 2. Donor: login + post donation ───────────── */
-    await login(page, 'donor@test.com', 'password123');
+    await login(page, 'Test Hotel', 'password123', 'DONOR');
     log(true, `Donor login → ${page.url()}`);
 
     await page.goto(`${BASE}/donor/donate`, { waitUntil: 'networkidle2' });
@@ -123,7 +128,7 @@ const run = async () => {
     await sleep(300);
 
     /* ─── 3. NGO: login + accept ────────────────────── */
-    await login(page, 'ngo@test.com', 'password123');
+    await login(page, 'Helping Hands', 'password123', 'NGO');
     log(true, `NGO login → ${page.url()}`);
     await sleep(1200);
 
@@ -157,7 +162,7 @@ const run = async () => {
     await sleep(300);
 
     /* ─── 4. Volunteer: login + 4-step delivery ─────── */
-    await login(page, 'vol@test.com', 'password123');
+    await login(page, 'John V', 'password123', 'VOLUNTEER');
     log(true, `Volunteer login → ${page.url()}`);
     await sleep(1200);
 
@@ -182,7 +187,7 @@ const run = async () => {
     /* ─── 5. Admin: dashboard stats ─────────────────── */
     await logout(page);
     await sleep(300);
-    await login(page, 'admin@test.com', 'password123');
+    await login(page, 'Admin', 'password123', 'ADMIN');
     await sleep(1500);
     const adminText = await page.evaluate(() => document.body.innerText);
     log(adminText.includes('Admin Dashboard'), 'Admin dashboard loads');
