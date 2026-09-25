@@ -40,6 +40,17 @@ export const NGODashboard = () => {
     }
   };
 
+  /* NGO confirms delivery (with or without a volunteer) */
+  const markDelivered = async (d) => {
+    setActionError('');
+    try {
+      await updateDonationStatus(d.id, 'DELIVERED');
+      setShareMsg(`"${d.title}" marked as delivered ✓`);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not mark as delivered.');
+    }
+  };
+
   /* Share/cancel live GPS for one accepted order — donor sees it in My Orders */
   const toggleShareLocation = async (d) => {
     setShareMsg('');
@@ -129,6 +140,9 @@ export const NGODashboard = () => {
                           onClick={() => toggleShareLocation(d)}>
                           <i className={`fas ${sharingId === d.id ? 'fa-location-crosshairs-slash' : 'fa-location-crosshairs'} mr-2`}></i>
                           {sharingId === d.id ? 'Stop Sharing GPS' : 'Share Live Location'}
+                        </Button>
+                        <Button variant="teal" className="text-sm" onClick={() => markDelivered(d)}>
+                          <i className="fas fa-circle-check mr-2"></i>Mark as Delivered ✓
                         </Button>
                         {sharingId === d.id && (
                           <span className="text-xs text-teal font-semibold"><i className="fas fa-circle animate-pulse mr-1 text-[6px]"></i>Donor can see your GPS</span>

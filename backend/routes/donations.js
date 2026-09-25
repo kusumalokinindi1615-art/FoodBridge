@@ -205,8 +205,12 @@ router.patch('/:id/status', protect, async (req, res) => {
       }
 
       case 'DELIVERED': {
-        if (donation.volunteerId?.toString() !== req.user._id.toString()) {
-          return res.status(403).json({ message: 'Only the assigned volunteer can confirm delivery' });
+        // The assigned volunteer OR the accepting NGO may confirm delivery
+        // (NGOs often do their own deliveries when no volunteer is assigned).
+        const isAssignedVolunteer = donation.volunteerId?.toString() === req.user._id.toString();
+        const isAcceptingNgo = donation.ngoId?.toString() === req.user._id.toString() && req.user.role === 'NGO';
+        if (!isAssignedVolunteer && !isAcceptingNgo) {
+          return res.status(403).json({ message: 'Only the assigned volunteer or the accepting NGO can confirm delivery' });
         }
         donation.status = 'DELIVERED';
         donation.deliveredAt = new Date();
