@@ -64,11 +64,6 @@ export const Home = () => {
                   <i className="fas fa-box-open mr-2"></i> Donate Food
                 </Button>
               </Link>
-              <Link to="/login">
-                <Button variant="outline" className="px-8 py-3.5 text-base">
-                  <i className="fas fa-right-to-bracket mr-2"></i> Login to Dashboard
-                </Button>
-              </Link>
             </div>
 
             {/* Mini stats row */}
