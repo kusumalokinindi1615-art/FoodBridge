@@ -32,16 +32,12 @@ const userSchema = new mongoose.Schema(
 userSchema.index({ locationCoords: '2dsphere' });
 
 // Hash password before save
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  try {
-    const bcrypt = require('bcryptjs');
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-    } catch (err) {
-    next(err);
-  }
+// Mongoose 9+: async pre hooks receive no `next` callback — just await and throw on error
+userSchema.pre('save', async function () {
+  if (!this.isModified('password')) return;
+  const bcrypt = require('bcryptjs');
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 userSchema.methods.comparePassword = async function (candidate) {

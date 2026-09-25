@@ -87,10 +87,8 @@ export const GlobalProvider = ({ children }) => {
   };
 
   const registerUser = async (userData) => {
-    const { token, user } = await authAPI.register(userData);
-    setToken(token);
-    setCurrentUser(user);
-    connectSocket(user.id);
+    // Create the account only — do NOT auto-login. User is redirected to /login.
+    const { user } = await authAPI.register(userData);
     return user;
   };
 

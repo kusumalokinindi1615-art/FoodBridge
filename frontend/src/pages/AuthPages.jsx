@@ -295,8 +295,8 @@ export const Register = () => {
           <div className="w-16 h-16 bg-teal/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <i className="fas fa-circle-check text-3xl text-teal"></i>
           </div>
-          <p className="text-gray-600 text-sm mb-6">{roleLabel} account created successfully. Head to your dashboard!</p>
-          <Button onClick={() => navigate(`/${role.toLowerCase()}/dashboard`)} className="w-full">Go to Dashboard</Button>
+          <p className="text-gray-600 text-sm mb-6">{roleLabel} account created successfully. Please log in.</p>
+          <Button onClick={() => navigate('/login')} className="w-full">Go to Login</Button>
         </div>
       </Modal>
     </AuthPanel>
