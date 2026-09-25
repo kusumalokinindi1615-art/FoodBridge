@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Button, Card, StatusBadge } from '../components/PublicUI';
 import { useGlobalState } from '../context/GlobalState';
 import { TrackingUI } from '../components/TrackingUI';
 
 export const VolunteerDashboard = () => {
   const { currentUser, donations, updateDonationStatus } = useGlobalState();
+  const [actionError, setActionError] = useState('');
 
   const pendingPickups = donations.filter(d => d.status === 'NGO_ACCEPTED');
   const myDeliveries = donations.filter(d => d.volunteerId === currentUser?.id);
@@ -12,10 +13,14 @@ export const VolunteerDashboard = () => {
     ['VOLUNTEER_ASSIGNED','PICKUP_STARTED','FOOD_COLLECTED','DELIVERY_STARTED'].includes(d.status));
   const completed = myDeliveries.filter(d => d.status === 'DELIVERED');
 
-  const claim = (id) => updateDonationStatus(id, 'VOLUNTEER_ASSIGNED', {
-    volunteerId: currentUser.id, volunteerName: currentUser.name
-  });
-  const next = (id, status) => updateDonationStatus(id, status);
+  const act = async (id, status) => {
+    setActionError('');
+    try {
+      await updateDonationStatus(id, status);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Action failed. Please try again.');
+    }
+  };
 
   const stepButtons = {
     VOLUNTEER_ASSIGNED: { label:'Start Pickup',       next:'PICKUP_STARTED'   },
@@ -38,12 +43,13 @@ export const VolunteerDashboard = () => {
             <i className="fas fa-route text-teal"></i> Active Delivery
           </h2>
           <TrackingUI donation={active}/>
+          {actionError && <p className="text-xs text-red-600 mb-3"><i className="fas fa-circle-exclamation mr-1"></i>{actionError}</p>}
           <div className="mt-5 flex gap-3">
             {stepButtons[active.status] && (
               <Button
                 variant={stepButtons[active.status].variant || 'primary'}
                 className="flex-1"
-                onClick={() => next(active.id, stepButtons[active.status].next)}
+                onClick={() => act(active.id, stepButtons[active.status].next)}
               >
                 {stepButtons[active.status].label}
               </Button>
@@ -70,7 +76,7 @@ export const VolunteerDashboard = () => {
                     <p className="flex items-center gap-1.5"><i className="fas fa-circle text-red-400 text-[6px]"></i> From: {d.location}</p>
                     <p className="flex items-center gap-1.5"><i className="fas fa-circle text-teal text-[6px]"></i> To: {d.deliveryLocation} ({d.ngoName})</p>
                   </div>
-                  <Button variant="primary" className="w-full text-sm" onClick={() => claim(d.id)} disabled={!!active}>
+                  <Button variant="primary" className="w-full text-sm" onClick={() => act(d.id, 'VOLUNTEER_ASSIGNED')} disabled={!!active}>
                     {active ? 'Finish active route first' : 'Accept Pickup'}
                   </Button>
                 </Card>

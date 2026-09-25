@@ -5,21 +5,28 @@ import { useGlobalState } from '../context/GlobalState';
 import { TrackingUI } from '../components/TrackingUI';
 
 export const NGODashboard = () => {
-  const { currentUser, donations, notifications, updateDonationStatus } = useGlobalState();
+  const { currentUser, donations, notifications, updateDonationStatus, markNotificationsRead } = useGlobalState();
   const [selected, setSelected] = useState(null);
   const [dest, setDest] = useState(currentUser?.location || '');
   const [showModal, setShowModal] = useState(false);
+  const [accepting, setAccepting] = useState(false);
+  const [actionError, setActionError] = useState('');
 
   const available = donations.filter(d => d.status === 'AVAILABLE');
   const myAccepted = donations.filter(d => d.ngoId === currentUser?.id);
   const myNotifs = notifications.filter(n => n.userId === currentUser?.id || n.userId === 'NGO_ALL');
 
-  const handleAcceptClick = (d) => { setSelected(d); setDest(currentUser?.location || ''); setShowModal(true); };
-  const confirmAccept = () => {
-    updateDonationStatus(selected.id, 'NGO_ACCEPTED', {
-      ngoId: currentUser.id, ngoName: currentUser.name, deliveryLocation: dest
-    });
-    setShowModal(false); setSelected(null);
+  const handleAcceptClick = (d) => { setSelected(d); setDest(currentUser?.location || ''); setShowModal(true); setActionError(''); };
+  const confirmAccept = async () => {
+    setAccepting(true); setActionError('');
+    try {
+      await updateDonationStatus(selected.id, 'NGO_ACCEPTED', { deliveryLocation: dest });
+      setShowModal(false); setSelected(null);
+    } catch (err) {
+      setActionError(err?.response?.data?.message || 'Could not accept this donation.');
+    } finally {
+      setAccepting(false);
+    }
   };
 
   return (
@@ -100,9 +107,12 @@ export const NGODashboard = () => {
               onClick={() => setDest(currentUser?.location)}>
               <i className="fas fa-location-crosshairs mr-1"></i>Use my NGO address
             </button>
+            {actionError && <p className="text-xs text-red-600 mb-3"><i className="fas fa-circle-exclamation mr-1"></i>{actionError}</p>}
             <div className="flex gap-3 mt-2">
               <Button variant="ghost" className="flex-1 border border-gray-200" onClick={() => setShowModal(false)}>Cancel</Button>
-              <Button variant="primary" className="flex-1" onClick={confirmAccept}>Confirm Acceptance</Button>
+              <Button variant="primary" className="flex-1" onClick={confirmAccept} disabled={accepting}>
+                {accepting ? <><i className="fas fa-spinner fa-spin mr-1"></i>Accepting…</> : 'Confirm Acceptance'}
+              </Button>
             </div>
           </div>
         )}

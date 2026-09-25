@@ -1,5 +1,6 @@
-import React, { createContext, useState, useContext } from 'react';
-import { mockDonations as initialDonations, mockUsers as initialUsers, mockNotifications as initialNotifications } from '../mockData';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import { authAPI, donationsAPI, notificationsAPI, setToken, getToken } from '../api/api';
+import { connectSocket, disconnectSocket, getSocket } from '../api/socket';
 
 const GlobalContext = createContext();
 
@@ -7,81 +8,135 @@ export const useGlobalState = () => useContext(GlobalContext);
 
 export const GlobalProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
-  const [users, setUsers] = useState(initialUsers || []);
-  const [donations, setDonations] = useState(initialDonations || []);
-  const [notifications, setNotifications] = useState(initialNotifications || []);
+  const [booting, setBooting] = useState(true);
+  const [donations, setDonations] = useState([]);
+  const [notifications, setNotifications] = useState([]);
 
-  const login = (email, role) => {
-    // Mock login logic
-    const user = users.find(u => u.email === email) || { id: Date.now(), name: 'Demo User', email, role };
+  /* ─── Helpers ─────────────────────────────────────── */
+  const refreshDonations = useCallback(async () => {
+    try {
+      const data = await donationsAPI.list();
+      setDonations(data.donations || []);
+    } catch (err) {
+      console.error('Failed to load donations:', err?.message);
+    }
+  }, []);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!getToken()) return;
+    try {
+      const data = await notificationsAPI.list();
+      // Map Mongo docs to the shape the UI expects ({ id, date, text, ... })
+      setNotifications((data.notifications || []).map(n => ({ ...n, id: n._id, date: n.createdAt })));
+    } catch (err) {
+      console.error('Failed to load notifications:', err?.message);
+    }
+  }, []);
+
+  /* ─── Boot: restore session + initial data ────────── */
+  useEffect(() => {
+    (async () => {
+      if (getToken()) {
+        try {
+          const { user } = await authAPI.me();
+          setCurrentUser(user);
+          connectSocket(user.id);
+          refreshNotifications();
+        } catch {
+          setToken(null); // stale/invalid token
+        }
+      }
+      await refreshDonations();
+      setBooting(false);
+    })();
+  }, [refreshDonations, refreshNotifications]);
+
+  /* ─── Real-time listeners (Socket.IO) ─────────────── */
+  useEffect(() => {
+    const socket = getSocket();
+    if (!socket) return;
+
+    const onNotification = (notif) => {
+      setNotifications((prev) => [{ ...notif, id: notif._id, date: notif.createdAt }, ...prev]);
+    };
+    const onDonationUpdated = () => refreshDonations();
+
+    socket.on('notification', onNotification);
+    socket.on('donationUpdated', onDonationUpdated);
+    return () => {
+      socket.off('notification', onNotification);
+      socket.off('donationUpdated', onDonationUpdated);
+    };
+  }, [currentUser, refreshDonations]);
+
+  /* ─── Auth actions ────────────────────────────────── */
+  const login = async (email, password) => {
+    const { token, user } = await authAPI.login(email, password);
+    setToken(token);
     setCurrentUser(user);
+    connectSocket(user.id);
+    refreshNotifications();
     return user;
   };
 
   const logout = () => {
+    setToken(null);
+    disconnectSocket();
     setCurrentUser(null);
+    setNotifications([]);
   };
 
-  const registerUser = (userData) => {
-    const newUser = { id: Date.now(), ...userData };
-    setUsers([...users, newUser]);
-    setCurrentUser(newUser);
-    return newUser;
+  const registerUser = async (userData) => {
+    const { token, user } = await authAPI.register(userData);
+    setToken(token);
+    setCurrentUser(user);
+    connectSocket(user.id);
+    return user;
   };
 
-  const addDonation = (donationData) => {
-    const newDonation = {
-      id: Date.now(),
+  /* ─── Donation actions ────────────────────────────── */
+  const addDonation = async (donationData) => {
+    const payload = {
       ...donationData,
-      status: 'AVAILABLE',
-      donorId: currentUser?.id,
-      createdAt: new Date().toISOString()
+      lat: donationData.coords?.latitude,
+      lng: donationData.coords?.longitude,
     };
-    setDonations([...donations, newDonation]);
-    
-    // Simulate notification to NGOs
-    addNotification({
-      userId: 'NGO_ALL', // Mock broadcast
-      text: `New food donation available nearby: ${donationData.title}`,
-      donationId: newDonation.id,
-      type: 'NEW_DONATION'
-    });
+    const { donation } = await donationsAPI.create(payload);
+    await refreshDonations();
+    return donation;
   };
 
-  const updateDonationStatus = (id, newStatus, additionalData = {}) => {
-    setDonations(donations.map(d => {
-      if (d.id === id) {
-        const updated = { ...d, status: newStatus, ...additionalData };
-        
-        // Handle notifications based on status changes
-        if (newStatus === 'NGO_ACCEPTED') {
-          addNotification({ userId: updated.donorId, text: `Your donation "${updated.title}" was accepted by an NGO!`, type: 'ACCEPTED' });
-        } else if (newStatus === 'DELIVERED') {
-          addNotification({ userId: updated.donorId, text: `Your donation "${updated.title}" has been delivered successfully!`, type: 'DELIVERED' });
-          addNotification({ userId: updated.ngoId, text: `Food delivery for "${updated.title}" has arrived!`, type: 'DELIVERED' });
-        }
-        
-        return updated;
-      }
-      return d;
-    }));
+  const updateDonationStatus = async (id, newStatus, additionalData = {}) => {
+    const { donation } = await donationsAPI.updateStatus(id, newStatus, additionalData);
+    await refreshDonations(); // server emits 'donationUpdated' too; this keeps us snappy
+    return donation;
   };
 
-  const addNotification = (notif) => {
-    setNotifications([{ id: Date.now(), read: false, date: new Date().toISOString(), ...notif }, ...notifications]);
-  };
-
-  const markNotificationsRead = (userId) => {
-    setNotifications(notifications.map(n => n.userId === userId || n.userId === 'NGO_ALL' ? { ...n, read: true } : n));
+  /* ─── Notifications ───────────────────────────────── */
+  const markNotificationsRead = async () => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    try {
+      await notificationsAPI.markAllRead();
+    } catch { /* non-fatal */ }
   };
 
   return (
-    <GlobalContext.Provider value={{
-      currentUser, login, logout, registerUser,
-      users,
-      donations, addDonation, updateDonationStatus,
-      notifications, markNotificationsRead
-    }}>
+    <GlobalContext.Provider
+      value={{
+        currentUser,
+        booting,
+        login,
+        logout,
+        registerUser,
+        donations,
+        refreshDonations,
+        addDonation,
+        updateDonationStatus,
+        notifications,
+        refreshNotifications,
+        markNotificationsRead,
+      }}
+    >
       {children}
     </GlobalContext.Provider>
   );

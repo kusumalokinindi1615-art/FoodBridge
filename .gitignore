@@ -1,0 +1,6 @@
+.env
+*.log
+*.png
+e2e-failure.png
+.env.backup-*
+node_modules/

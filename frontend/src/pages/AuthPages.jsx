@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { Button, BotanicalBg } from '../components/PublicUI';
 import { FormInput, SelectInput, Modal } from '../components/PublicUI2';
 import { useGlobalState } from '../context/GlobalState';
+import { useGeolocation } from '../hooks/useGeolocation';
 
 /* ─── Panel wrapper shared by Login & Register ────── */
 const AuthPanel = ({ children, image, quote }) => (
@@ -54,9 +55,10 @@ export const Login = () => {
   const { login } = useGlobalState();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('DONOR');
   const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState({});
+  const [serverError, setServerError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   const validate = () => {
     const e = {};
@@ -66,11 +68,18 @@ export const Login = () => {
     return !Object.keys(e).length;
   };
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault();
-    if (validate()) {
-      login(email, role);
-      navigate(`/${role.toLowerCase()}/dashboard`);
+    setServerError('');
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      const user = await login(email, password);
+      navigate(`/${user.role.toLowerCase()}/dashboard`);
+    } catch (err) {
+      setServerError(err?.response?.data?.message || 'Login failed. Is the backend running?');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -81,17 +90,6 @@ export const Login = () => {
         <p className="text-sm text-gray-400 mb-8">Sign in to your FoodBridge account.</p>
 
         <form onSubmit={handleSubmit}>
-          <SelectInput
-            label="Mock Login Role"
-            options={[
-              { value: 'DONOR', label: 'Donor' },
-              { value: 'NGO', label: 'NGO' },
-              { value: 'VOLUNTEER', label: 'Volunteer' },
-              { value: 'ADMIN', label: 'Admin' },
-            ]}
-            value={role}
-            onChange={e => setRole(e.target.value)}
-          />
           <FormInput label="Email" type="email" value={email} onChange={e => setEmail(e.target.value)} error={errors.email} />
           <div className="relative">
             <FormInput label="Password" type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />
@@ -100,13 +98,20 @@ export const Login = () => {
               <i className={`fas ${showPwd ? 'fa-eye-slash' : 'fa-eye'}`}></i>
             </button>
           </div>
+          {serverError && (
+            <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+              <i className="fas fa-circle-exclamation mr-1.5"></i>{serverError}
+            </div>
+          )}
           <div className="flex justify-between items-center mb-6">
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-teal rounded"/> Remember me
             </label>
             <a href="#" className="text-sm text-teal font-semibold hover:underline">Forgot password?</a>
           </div>
-          <Button type="submit" className="w-full py-3 text-sm">Sign In</Button>
+          <Button type="submit" className="w-full py-3 text-sm" disabled={submitting}>
+            {submitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Signing in…</> : 'Sign In'}
+          </Button>
         </form>
 
         <p className="text-center mt-6 text-sm text-gray-500">
@@ -128,6 +133,10 @@ export const Register = () => {
   const [form, setForm] = useState({});
   const [errors, setErrors] = useState({});
   const [showSuccess, setShowSuccess] = useState(false);
+  const [coords, setCoords] = useState(null);
+  const [serverError, setServerError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { error: geoError, loading: geoLoading, getCurrent } = useGeolocation();
 
   const set = (field, val) => {
     setForm({ ...form, [field]: val });
@@ -148,11 +157,28 @@ export const Register = () => {
     return !Object.keys(e).length;
   };
 
-  const handleSubmit = (ev) => {
+  const handleSubmit = async (ev) => {
     ev.preventDefault();
-    if (validate()) {
-      registerUser({ name: form.name, email: form.email, phone: form.phone, location: form.location, role });
+    setServerError('');
+    if (!validate()) return;
+    setSubmitting(true);
+    try {
+      await registerUser({
+        name: form.name,
+        email: form.email,
+        phone: form.phone,
+        location: form.location,
+        contactPerson: form.contactPerson,
+        password: form.password,
+        role,
+        lat: coords?.latitude,
+        lng: coords?.longitude,
+      });
       setShowSuccess(true);
+    } catch (err) {
+      setServerError(err?.response?.data?.message || 'Registration failed. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -197,12 +223,20 @@ export const Register = () => {
                 <input type="text" className={`flex-1 px-4 py-3 text-sm rounded-2xl border bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent
                   ${errors.location ? 'border-red-400' : 'border-gray-200'}`}
                   value={form.location||''} onChange={e => set('location',e.target.value)} placeholder="Address" />
-                <button type="button" onClick={() => set('location','123 Tech Park, Innovation City')}
-                  className="px-3 py-2 text-xs bg-teal/10 text-teal rounded-xl border border-teal/20 font-semibold hover:bg-teal/20 whitespace-nowrap">
-                  <i className="fas fa-location-crosshairs mr-1"></i>Current
+                <button type="button" disabled={geoLoading}
+                  onClick={async () => {
+                    const res = await getCurrent();
+                    if (res?.address) {
+                      set('location', res.address);
+                      setCoords(res.coords);
+                    }
+                  }}
+                  className="px-3 py-2 text-xs bg-teal/10 text-teal rounded-xl border border-teal/20 font-semibold hover:bg-teal/20 whitespace-nowrap disabled:opacity-50">
+                  <i className={`fas fa-location-crosshairs mr-1 ${geoLoading ? 'fa-spin' : ''}`}></i>
+                  {geoLoading ? 'Locating…' : 'Current'}
                 </button>
               </div>
-              {errors.location && <p className="mt-1 text-xs text-red-600">{errors.location}</p>}
+              {(errors.location || geoError) && <p className="mt-1 text-xs text-red-600">{errors.location || geoError}</p>}
             </div>
           )}
 
@@ -211,7 +245,15 @@ export const Register = () => {
             <FormInput label="Confirm Password" type="password" value={form.confirmPassword||''} onChange={e => set('confirmPassword',e.target.value)} error={errors.confirmPassword}/>
           </div>
 
-          <Button type="submit" className="w-full py-3 text-sm mt-4">Create Account</Button>
+          {serverError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5 my-3">
+              <i className="fas fa-circle-exclamation mr-1.5"></i>{serverError}
+            </div>
+          )}
+
+          <Button type="submit" className="w-full py-3 text-sm mt-4" disabled={submitting}>
+            {submitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Creating account…</> : 'Create Account'}
+          </Button>
         </form>
 
         <p className="text-center mt-5 text-sm text-gray-500">

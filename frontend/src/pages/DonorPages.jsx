@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Button, Card, StatusBadge } from '../components/PublicUI';
 import { FormInput, SelectInput, Modal } from '../components/PublicUI2';
 import { useGlobalState } from '../context/GlobalState';
+import { useGeolocation } from '../hooks/useGeolocation';
 import { TrackingUI } from '../components/TrackingUI';
 
 /* ─── Donor Dashboard ────────────────────────────────── */
@@ -81,25 +82,37 @@ export const DonateFood = () => {
   const { currentUser, addDonation } = useGlobalState();
   const [form, setForm] = useState({ location: currentUser?.location || '' });
   const [showSuccess, setShowSuccess] = useState(false);
+  const [coords, setCoords] = useState(null);
+  const [serverError, setServerError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const { error: geoError, loading: geoLoading, getCurrent } = useGeolocation();
 
   const set = (f, v) => setForm({ ...form, [f]: v });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    const expiry = new Date();
-    expiry.setHours(expiry.getHours() + parseInt(form.safeHours || 4));
-    addDonation({
-      title: form.title,
-      category: form.category,
-      description: form.description,
-      qty: form.qty,
-      servings: form.servings,
-      preparedDate: form.preparedTime || new Date().toISOString(),
-      safeUntil: expiry.toISOString(),
-      location: form.location,
-      imageUrl: 'https://images.unsplash.com/photo-1490818387583-1baba5e638ca?w=800&q=80',
-    });
-    setShowSuccess(true);
+    setServerError('');
+    setSubmitting(true);
+    try {
+      await addDonation({
+        title: form.title,
+        category: form.category,
+        description: form.description,
+        qty: form.qty,
+        servings: form.servings,
+        preparedDate: form.preparedTime || new Date().toISOString(),
+        safeHours: form.safeHours,
+        storageType: form.storageType || 'Room Temperature',
+        location: form.location,
+        lat: coords?.latitude,
+        lng: coords?.longitude,
+      });
+      setShowSuccess(true);
+    } catch (err) {
+      setServerError(err?.response?.data?.message || 'Could not post donation. Is the backend running?');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
@@ -138,16 +151,32 @@ export const DonateFood = () => {
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Pickup Location</label>
             <div className="flex gap-2">
-              <input type="text" className="flex-1 px-4 py-3 text-sm rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent" required value={form.location||''} onChange={e => set('location',e.target.value)} placeholder="Enter address"/>
-              <button type="button" onClick={() => set('location', currentUser?.location)}
-                className="px-4 py-2 text-xs bg-teal/10 text-teal rounded-xl border border-teal/20 font-semibold hover:bg-teal/20">
-                <i className="fas fa-location-crosshairs mr-1"></i>Current
+              <input type="text" className="flex-1 px-4 py-3 text-sm rounded-2xl border border-gray-200 bg-gray-50 focus:outline-none focus:ring-2 focus:ring-teal focus:border-transparent" required value={form.location||''} onChange={e => set('location',e.target.value)} placeholder="Enter address"/>                <button type="button" disabled={geoLoading}
+                onClick={async () => {
+                  const res = await getCurrent();
+                  if (res?.address) {
+                    set('location', res.address);
+                    setCoords(res.coords);
+                  }
+                }}
+                className="px-4 py-2 text-xs bg-teal/10 text-teal rounded-xl border border-teal/20 font-semibold hover:bg-teal/20 disabled:opacity-50">
+                <i className={`fas fa-location-crosshairs mr-1 ${geoLoading ? 'fa-spin' : ''}`}></i>
+                {geoLoading ? 'Locating…' : 'Current'}
               </button>
             </div>
+            {geoError && <p className="mt-1 text-xs text-red-600">{geoError}</p>}
           </div>
 
+          {serverError && (
+            <div className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
+              <i className="fas fa-circle-exclamation mr-1.5"></i>{serverError}
+            </div>
+          )}
+
           <div className="pt-4 border-t border-gray-100">
-            <Button type="submit" className="w-full py-3">Post Donation</Button>
+            <Button type="submit" className="w-full py-3" disabled={submitting}>
+              {submitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Posting…</> : 'Post Donation'}
+            </Button>
           </div>
         </form>
       </Card>

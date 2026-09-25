@@ -1,10 +1,19 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, PageContainer, SectionHeading, BotanicalBg } from '../components/PublicUI';
-import { mockStats } from '../mockData';
+import { statsAPI } from '../api/api';
 
 /* ─── HOME ──────────────────────────────────────────── */
-export const Home = () => (
+export const Home = () => {
+  const [stats, setStats] = useState({ mealsShared: 0, activeDonors: 0, partnerNGOs: 0, volunteers: 0 });
+
+  useEffect(() => {
+    statsAPI.get()
+      .then((d) => setStats(d.stats))
+      .catch(() => {}); // fall back to zeros if backend is down
+  }, []);
+
+  return (
   <div>
     {/* ── Hero ── */}
     <section className="relative overflow-hidden bg-background min-h-[92vh] flex items-center">
@@ -65,17 +74,17 @@ export const Home = () => (
             {/* Mini stats row */}
             <div className="flex gap-8">
               <div>
-                <div className="text-2xl font-extrabold text-primary">{mockStats.mealsShared.toLocaleString()}+</div>
+                <div className="text-2xl font-extrabold text-primary">{stats.mealsShared.toLocaleString()}+</div>
                 <div className="text-xs text-gray-500 font-medium">Meals Shared</div>
               </div>
               <div className="w-px bg-gray-200"></div>
               <div>
-                <div className="text-2xl font-extrabold text-teal">{mockStats.partnerNGOs}+</div>
+                <div className="text-2xl font-extrabold text-teal">{stats.partnerNGOs}+</div>
                 <div className="text-xs text-gray-500 font-medium">Partner NGOs</div>
               </div>
               <div className="w-px bg-gray-200"></div>
               <div>
-                <div className="text-2xl font-extrabold text-accent">{mockStats.volunteers}+</div>
+                <div className="text-2xl font-extrabold text-accent">{stats.volunteers}+</div>
                 <div className="text-xs text-gray-500 font-medium">Volunteers</div>
               </div>
             </div>
@@ -127,7 +136,7 @@ export const Home = () => (
                   <i className="fas fa-people-group text-white text-sm"></i>
                 </div>
                 <div>
-                  <p className="text-xs font-bold text-gray-800">{mockStats.activeDonors} Donors</p>
+                  <p className="text-xs font-bold text-gray-800">{stats.activeDonors} Donors</p>
                   <p className="text-xs text-teal font-medium">Active today</p>
                 </div>
               </div>
@@ -173,10 +182,10 @@ export const Home = () => (
       </div>
       <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center relative z-10">
         {[
-          { val:`${mockStats.mealsShared.toLocaleString()}+`, label:'Meals Shared' },
-          { val:mockStats.activeDonors, label:'Active Donors' },
-          { val:mockStats.partnerNGOs, label:'Partner NGOs' },
-          { val:mockStats.volunteers, label:'Volunteers' },
+          { val:`${stats.mealsShared.toLocaleString()}+`, label:'Meals Shared' },
+          { val:stats.activeDonors, label:'Active Donors' },
+          { val:stats.partnerNGOs, label:'Partner NGOs' },
+          { val:stats.volunteers, label:'Volunteers' },
         ].map((s,i) => (
           <div key={i}>
             <div className="text-4xl font-extrabold mb-1">{s.val}</div>
@@ -216,7 +225,8 @@ export const Home = () => (
       </PageContainer>
     </section>
   </div>
-);
+  );
+};
 
 /* We keep About exported so the route doesn't crash even though it's not in the nav */
 export const About = () => null;

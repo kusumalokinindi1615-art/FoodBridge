@@ -2,24 +2,31 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Button, Card, PageContainer, SectionHeading, StatusBadge } from '../components/PublicUI';
 import { SearchBar, SelectInput, EmptyState } from '../components/PublicUI2';
-import { mockDonations, mockCategories } from '../mockData';
+import { donationsAPI } from '../api/api';
 
 export const AvailableFood = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [filteredDonations, setFilteredDonations] = useState([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    let result = mockDonations;
-    if (searchTerm) {
-      result = result.filter(d => d.title.toLowerCase().includes(searchTerm.toLowerCase()) || d.location.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-    if (categoryFilter) {
-      result = result.filter(d => d.category === categoryFilter);
-    }
-    // Only show available and expired (to show the states), omit ones accepted by others
-    result = result.filter(d => d.status === 'AVAILABLE' || d.status === 'EXPIRED');
-    setFilteredDonations(result);
+    (async () => {
+      setLoading(true);
+      try {
+        const params = {};
+        if (searchTerm) params.search = searchTerm;
+        if (categoryFilter) params.category = categoryFilter;
+        const data = await donationsAPI.list(params);
+        // Only show available and expired publicly (hide ones accepted by others)
+        setFilteredDonations((data.donations || []).filter(d => d.status === 'AVAILABLE' || d.status === 'EXPIRED'));
+      } catch (err) {
+        console.error('Failed to load donations:', err?.message);
+        setFilteredDonations([]);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, [searchTerm, categoryFilter]);
 
   return (
@@ -47,7 +54,7 @@ export const AvailableFood = () => {
                 onChange={e => setCategoryFilter(e.target.value)}
               >
                 <option value="">All Categories</option>
-                {mockCategories.map(c => <option key={c} value={c}>{c}</option>)}
+                {['Cooked Food', 'Rice', 'Biryani', 'Vegetables', 'Fruits', 'Bakery', 'Packaged Food', 'Other'].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
           </div>
@@ -55,7 +62,9 @@ export const AvailableFood = () => {
       </div>
 
       <PageContainer className="-mt-16">
-        {filteredDonations.length > 0 ? (
+        {loading ? (
+          <p className="text-center text-gray-400 py-16"><i className="fas fa-spinner fa-spin mr-2"></i>Loading food near you…</p>
+        ) : filteredDonations.length > 0 ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {filteredDonations.map(donation => (
               <Card key={donation.id} className="flex flex-col h-full hover:shadow-lg transition-shadow">
@@ -93,8 +102,20 @@ export const AvailableFood = () => {
 
 export const FoodDetails = () => {
   const { id } = useParams();
-  const donation = mockDonations.find(d => d.id === parseInt(id));
+  const [donation, setDonation] = useState(null);
+  const [notFound, setNotFound] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const data = await donationsAPI.get(id);
+        setDonation(data.donation);
+      } catch {
+        setNotFound(true);
+      }
+    })();
+  }, [id]);
 
   useEffect(() => {
     if (!donation) return;
@@ -121,8 +142,11 @@ export const FoodDetails = () => {
     return () => clearInterval(timer);
   }, [donation]);
 
-  if (!donation) {
+  if (notFound) {
     return <PageContainer><EmptyState title="Food not found" message="The donation you are looking for does not exist." icon="fa-exclamation-circle" /></PageContainer>;
+  }
+  if (!donation) {
+    return <PageContainer><p className="text-center text-gray-400 py-16"><i className="fas fa-spinner fa-spin mr-2"></i>Loading…</p></PageContainer>;
   }
 
   const isExpired = timeLeft === 'EXPIRED' || donation.status === 'EXPIRED';

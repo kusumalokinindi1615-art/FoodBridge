@@ -5,7 +5,7 @@ import { useGlobalState } from './context/GlobalState';
 
 // Public Pages
 import { Home, About } from './pages/MarketingPages';
-import { FoodDetails } from './pages/FoodPages';
+import { AvailableFood, FoodDetails } from './pages/FoodPages';
 import { Login, Register } from './pages/AuthPages';
 import { NotFound } from './pages/NotFound';
 
@@ -20,7 +20,7 @@ const DashboardLayout = ({ role, children }) => {
   const { logout, currentUser } = useGlobalState();
 
   const allLinks = [
-    { roles:['DONOR','NGO','VOLUNTEER','ADMIN'], to:`/${role.toLowerCase()}/dashboard`, label:'Dashboard', icon:'fa-house' },
+    { roles:['NGO','VOLUNTEER','ADMIN'], to:`/${role.toLowerCase()}/dashboard`, label:'Dashboard', icon:'fa-house' },
     { roles:['DONOR'], to:'/donor/donate', label:'Donate Food', icon:'fa-plus-circle' },
   ];
   const links = allLinks.filter(l => l.roles.includes(role));
@@ -74,7 +74,15 @@ const DashboardLayout = ({ role, children }) => {
 
 /* ─── Protected Route ────────────────────────────────── */
 const ProtectedRoute = ({ allowedRoles, children }) => {
-  const { currentUser } = useGlobalState();
+  const { currentUser, booting } = useGlobalState();
+  if (booting) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-gray-400">
+        <i className="fas fa-spinner fa-spin text-2xl text-teal mb-3"></i>
+        <p className="text-sm">Restoring your session…</p>
+      </div>
+    );
+  }
   if (!currentUser || !allowedRoles.includes(currentUser.role)) {
     return <Navigate to="/login" replace />;
   }
@@ -95,6 +103,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/about" element={<About />} />
           <Route path="/food/:id" element={<FoodDetails />} />
+          <Route path="/food" element={<AvailableFood />} />
           <Route path="/login" element={<Login />} />
           <Route path="/register/:roleType" element={<Register />} />
           <Route path="/register" element={<Navigate to="/register/donor" replace />} />
