@@ -32,4 +32,10 @@ const authorize = (...roles) => (req, res, next) => {
   next();
 };
 
-module.exports = { protect, authorize };
+/** Allow public discovery while still authenticating requests that provide a token. */
+const optionalProtect = async (req, res, next) => {
+  if (!req.headers.authorization?.startsWith('Bearer')) return next();
+  return protect(req, res, next);
+};
+
+module.exports = { protect, authorize, optionalProtect };

@@ -13,11 +13,21 @@ const io = new Server(server, {
   cors: { origin: '*', methods: ['GET', 'POST'] },
 });
 
+io.use(async (socket, next) => {
+  try {
+    const jwt = require('jsonwebtoken');
+    const token = socket.handshake.auth?.token;
+    if (!token) return next(new Error('Authentication required'));
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await require('./models/User').findById(decoded.id).select('_id');
+    if (!user) return next(new Error('User not found'));
+    socket.userId = user._id.toString();
+    next();
+  } catch { next(new Error('Invalid authentication token')); }
+});
+
 io.on('connection', (socket) => {
-  // Frontend emits 'join' with its user id after login
-  socket.on('join', (userId) => {
-    if (userId) socket.join(`user:${userId}`);
-  });
+  socket.join(`user:${socket.userId}`);
   socket.on('disconnect', () => {});
 });
 

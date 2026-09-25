@@ -1,10 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import { Card, StatusBadge } from '../components/PublicUI';
-import { adminAPI } from '../api/api';
+import { adminAPI, donationsAPI } from '../api/api';
 import { useGlobalState } from '../context/GlobalState';
 
+/* ─── Admin GPS poller (order-scoped, uses authorized tracking endpoint) ── */
+const VolunteerLocationPoller = ({ donationId, onLocation }) => {
+  useEffect(() => {
+    let stop = false;
+    const poll = async () => {
+      try {
+        const { tracking } = await donationsAPI.tracking(donationId);
+        if (!stop) onLocation(tracking);
+      } catch { /* gone or unauthorized → ignore */ }
+    };
+    poll();
+    const t = setInterval(poll, 15000);
+    return () => { stop = true; clearInterval(t); };
+  }, [donationId]);
+  return null;
+};
+
 export const AdminDashboard = () => {
-  const { refreshDonations, donations } = useGlobalState();
+  const { refreshDonations, donations, notifications } = useGlobalState();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
@@ -41,7 +58,7 @@ export const AdminDashboard = () => {
 
   const activeD = donations.filter(d =>
     ['VOLUNTEER_ASSIGNED', 'PICKUP_STARTED', 'FOOD_COLLECTED', 'DELIVERY_STARTED'].includes(d.status)).length;
-  const doneD = donations.filter(d => d.status === 'DELIVERED').length;
+  const doneD = donations.filter(d => ['DELIVERED', 'COMPLETED'].includes(d.status)).length;
 
   const statsCards = [
     { label: 'Donors', val: stats?.donors ?? '…', icon: 'fa-box-open', bg: 'from-blue-500 to-blue-600' },
@@ -137,17 +154,49 @@ export const AdminDashboard = () => {
           </h2>
           <div className="space-y-3">
             {donations.slice().reverse().slice(0, 6).map(d => (
-              <div key={d.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-2xl">
-                <div>
-                  <p className="font-semibold text-sm text-gray-900">{d.title}</p>
-                  <p className="text-xs text-gray-400">{new Date(d.createdAt || new Date()).toLocaleString()}</p>
-                </div>
-                <StatusBadge status={d.status} />
-              </div>
+              <AdminDonationRow key={d.id} d={d} />
             ))}
             {donations.length === 0 && <p className="text-sm text-gray-400 italic text-center py-6">No donations yet.</p>}
           </div>
         </Card>
+      </div>
+
+      {/* System notifications feed */}
+      <Card className="p-6">
+        <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <i className="fas fa-tower-broadcast text-teal"></i> System Notifications
+        </h2>
+        {notifications.length ? notifications.slice(0, 6).map(n => (
+          <div key={n.id} className="py-2.5 border-b border-gray-100 last:border-0">
+            <p className="text-sm text-gray-700">{n.text}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{new Date(n.date).toLocaleString()}</p>
+          </div>
+        )) : <p className="text-sm text-gray-400 italic">No notifications.</p>}
+      </Card>
+    </div>
+  );
+};
+
+/* One donation row with order-scoped volunteer GPS (authorized tracking API) */
+const AdminDonationRow = ({ d }) => {
+  const [tracking, setTracking] = useState(null);
+  const showGps = ['VOLUNTEER_ASSIGNED', 'PICKUP_STARTED', 'FOOD_COLLECTED', 'DELIVERY_STARTED'].includes(d.status);
+  return (
+    <div className="p-3 bg-gray-50 rounded-2xl">
+      {showGps && <VolunteerLocationPoller donationId={d.id} onLocation={setTracking} />}
+      <div className="flex justify-between items-center">
+        <div>
+          <p className="font-semibold text-sm text-gray-900">{d.title} <span className="text-gray-400">#{String(d.id).slice(-8)}</span></p>
+          <p className="text-xs text-gray-400">{new Date(d.createdAt || new Date()).toLocaleString()}</p>
+          {d.volunteerName && <p className="text-xs text-gray-600">Assigned volunteer: {d.volunteerName}</p>}
+          {tracking?.volunteerLocation?.lat != null && (
+            <p className="text-xs text-teal font-semibold">
+              GPS: {Number(tracking.volunteerLocation.lat).toFixed(4)}, {Number(tracking.volunteerLocation.lng).toFixed(4)}
+              {tracking.volunteerLocation.updatedAt && <> · {new Date(tracking.volunteerLocation.updatedAt).toLocaleTimeString()}</>}
+            </p>
+          )}
+        </div>
+        <StatusBadge status={d.status} />
       </div>
     </div>
   );

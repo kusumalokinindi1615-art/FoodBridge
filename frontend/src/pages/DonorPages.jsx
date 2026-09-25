@@ -7,7 +7,7 @@ import { useGeolocation } from '../hooks/useGeolocation';
 import { TrackingUI } from '../components/TrackingUI';
 
 /* ─── Donor Dashboard ────────────────────────────────── */
-/* ─── Live NGO GPS poller (order-scoped) ──────────── */
+/* ─── Live GPS poller (order-scoped, authorized tracking endpoint) ── */
 const NgoLocationPoller = ({ donationId, onLocation }) => {
   useEffect(() => {
     let stop = false;
@@ -15,7 +15,7 @@ const NgoLocationPoller = ({ donationId, onLocation }) => {
       try {
         const { donationsAPI } = await import('../api/api');
         const { tracking } = await donationsAPI.tracking(donationId);
-        if (!stop && tracking?.ngoLocation) onLocation(tracking);
+        if (!stop) onLocation(tracking);
       } catch { /* 403/404 → not your order or gone; ignore */ }
     };
     poll();
@@ -74,6 +74,7 @@ export const DonorDashboard = () => {
                       </div>
                       <p className="text-xs text-gray-500 mt-0.5">{d.qty} • {d.servings} servings</p>
                       {d.ngoName && <p className="text-xs text-gray-600 mt-1"><i className="fas fa-handshake text-teal mr-1"></i>Accepted by <b>{d.ngoName}</b></p>}
+                      {d.volunteerName && <p className="text-xs text-purple-700 mt-1"><i className="fas fa-person-biking mr-1"></i>Assigned Volunteer: <b>{d.volunteerName}</b></p>}
                       {d.deliveryLocation && <p className="text-xs text-gray-500 mt-0.5"><i className="fas fa-flag-checkered text-primary mr-1"></i>To: {d.deliveryLocation}</p>}
                       {d.deliveredAt && <p className="text-xs text-teal font-semibold mt-0.5"><i className="fas fa-circle-check mr-1"></i>Delivered {new Date(d.deliveredAt).toLocaleString()}</p>}
                     </div>
@@ -81,6 +82,22 @@ export const DonorDashboard = () => {
                   {/* Live NGO GPS — only the NGO that accepted THIS order */}
                   {['NGO_ACCEPTED','VOLUNTEER_ASSIGNED','PICKUP_STARTED','FOOD_COLLECTED','DELIVERY_STARTED'].includes(d.status) && (
                     <NgoLocationPoller donationId={d.id} onLocation={(tr) => setNgoLoc(prev => ({ ...prev, [d.id]: tr }))} />
+                  )}
+                  {/* Assigned volunteer's live GPS for THIS order (tracking endpoint enforces access) */}
+                  {['VOLUNTEER_ASSIGNED','PICKUP_STARTED','FOOD_COLLECTED','DELIVERY_STARTED'].includes(d.status) && t?.volunteerLocation?.lat != null && (
+                    <div className="mt-3 bg-purple-50 border border-purple-100 rounded-2xl p-3 text-xs">
+                      <p className="font-bold text-purple-700 flex items-center gap-1.5">
+                        <i className="fas fa-satellite-dish animate-pulse"></i>{d.volunteerName || 'Assigned volunteer'} — live delivery location
+                      </p>
+                      <p className="text-gray-600 mt-1">
+                        GPS: {Number(t.volunteerLocation.lat).toFixed(4)}, {Number(t.volunteerLocation.lng).toFixed(4)}
+                        {t.volunteerLocation.updatedAt && <> · {new Date(t.volunteerLocation.updatedAt).toLocaleTimeString()}</>}
+                      </p>
+                      <a href={`https://www.openstreetmap.org/?mlat=${t.volunteerLocation.lat}&mlon=${t.volunteerLocation.lng}#map=15/${t.volunteerLocation.lat}/${t.volunteerLocation.lng}`}
+                        target="_blank" rel="noreferrer" className="text-purple-700 font-semibold hover:underline mt-1 inline-block">
+                        <i className="fas fa-map-location-dot mr-1"></i>View on map
+                      </a>
+                    </div>
                   )}
                   {t?.ngoLocation && t.ngoLocation.lat != null && (
                     <div className="mt-3 bg-teal/5 border border-teal/20 rounded-2xl p-3 text-xs">

@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button, Card, StatusBadge } from '../components/PublicUI';
 import { FormInput, Modal } from '../components/PublicUI2';
 import { useGlobalState } from '../context/GlobalState';
 import { TrackingUI } from '../components/TrackingUI';
 import { donationsAPI } from '../api/api';
 
+/* Resolve a ref that may arrive as id string OR populated object */
+const refId = (v) => String(v?._id ?? v ?? '');
+
 export const NGODashboard = () => {
-  const { currentUser, donations, notifications, updateDonationStatus, markNotificationsRead } = useGlobalState();
+  const { currentUser, donations, notifications, updateDonationStatus, markNotificationsRead, refreshDonations } = useGlobalState();
   const [selected, setSelected] = useState(null);
   const [dest, setDest] = useState(currentUser?.location || '');
   const [showModal, setShowModal] = useState(false);
@@ -15,10 +18,17 @@ export const NGODashboard = () => {
   // per-order live GPS sharing state
   const [sharingId, setSharingId] = useState(null);
   const [shareMsg, setShareMsg] = useState('');
+  const [sharingRequestId, setSharingRequestId] = useState(null);
 
   const available = donations.filter(d => d.status === 'AVAILABLE');
-  const myAccepted = donations.filter(d => d.ngoId === currentUser?.id);
-  const myNotifs = notifications.filter(n => n.userId === currentUser?.id || n.userId === 'NGO_ALL');
+  const myAccepted = donations.filter(d => refId(d.ngoId) === currentUser?.id);
+  const myNotifs = notifications;
+
+  /* Stop any running GPS interval when the dashboard unmounts */
+  useEffect(() => () => {
+    Object.values(window.__ngoShareTimer || {}).forEach(clearInterval);
+    window.__ngoShareTimer = {};
+  }, []);
 
   const handleAcceptClick = (d) => { setSelected(d); setDest(currentUser?.location || ''); setShowModal(true); setActionError(''); };
   const confirmAccept = async () => {
@@ -45,16 +55,33 @@ export const NGODashboard = () => {
     setActionError('');
     try {
       await updateDonationStatus(d.id, 'DELIVERED');
+      clearInterval(window.__ngoShareTimer?.[d.id]); delete window.__ngoShareTimer?.[d.id];
+      setSharingId(s => (s === d.id ? null : s));
       setShareMsg(`"${d.title}" marked as delivered ✓`);
     } catch (err) {
       setActionError(err?.response?.data?.message || 'Could not mark as delivered.');
     }
   };
 
+  const shareRequest = async (d) => {
+    setSharingRequestId(d.id); setShareMsg('');
+    try {
+      const result = await donationsAPI.shareWithVolunteers(d.id);
+      setShareMsg(result.notified ? `Shared with ${result.notified} available volunteers.` : 'This request was already shared with all available volunteers.');
+      await refreshDonations();
+    } catch (err) { setShareMsg(err?.response?.data?.message || 'Could not share this request.'); }
+    finally { setSharingRequestId(null); }
+  };
+
   /* Share/cancel live GPS for one accepted order — donor sees it in My Orders */
   const toggleShareLocation = async (d) => {
     setShareMsg('');
-    if (sharingId === d.id) { setSharingId(null); return; } // stop sharing
+    if (sharingId === d.id) { // stop sharing
+      clearInterval(window.__ngoShareTimer?.[d.id]); delete window.__ngoShareTimer?.[d.id];
+      setSharingId(null);
+      setShareMsg(`Stopped sharing live location for "${d.title}".`);
+      return;
+    }
     if (!('geolocation' in navigator)) {
       setShareMsg('Geolocation is not supported by your browser.');
       return;
@@ -101,9 +128,9 @@ export const NGODashboard = () => {
               <div className="grid sm:grid-cols-2 gap-4">
                 {available.map(d => (
                   <Card key={d.id} className="p-5 border-l-4 border-l-yellow-400">
-                    <img src={d.imageUrl} className="w-full h-32 object-cover rounded-2xl mb-3" alt={d.title}/>
+                    <img src={d.imageUrl} onError={(e) => { e.target.style.display = 'none'; }} className="w-full h-32 object-cover rounded-2xl mb-3" alt={d.title}/>
                     <h3 className="font-bold text-gray-900">{d.title}</h3>
-                    <p className="text-xs text-gray-500 mb-1">{d.category} • {d.qty}</p>
+                    <p className="text-xs text-gray-500 mb-1">#{String(d.id).slice(-8)} · {d.category} • {d.qty}</p>
                     <p className="text-xs text-gray-500 mb-4 flex items-center gap-1">
                       <i className="fas fa-location-dot text-teal"></i>{d.location}
                     </p>
@@ -134,6 +161,22 @@ export const NGODashboard = () => {
                         className="w-full h-40 object-cover rounded-3xl mb-3 shadow-sm" />
                     )}
                     <TrackingUI donation={d} />
+                    {d.status === 'NGO_ACCEPTED' && (
+                      <div className="mt-3 flex flex-wrap items-center gap-3">
+                        <Button variant="primary" onClick={() => shareRequest(d)} disabled={sharingRequestId === d.id}>
+                          {sharingRequestId === d.id ? 'Sharing…' : 'Share with Volunteers'}
+                        </Button>
+                        {!d.volunteerId && <Button variant="outline" onClick={() => updateDonationStatus(d.id, 'NGO_ACCEPTED')}>
+                          Accept / Take Responsibility
+                        </Button>}
+                      </div>
+                    )}
+                    {d.status === 'NGO_ACCEPTED' && !d.volunteerId && (
+                      <p className="mt-2 text-xs text-gray-500"><i className="fas fa-hourglass-half mr-1.5"></i>No volunteer has accepted this request yet.</p>
+                    )}
+                    {d.volunteerId && (
+                      <p className="mt-2 text-xs text-purple-700 font-semibold"><i className="fas fa-person-biking mr-1.5"></i>Accepted by {d.volunteerName}</p>
+                    )}
                     {['NGO_ACCEPTED','VOLUNTEER_ASSIGNED','PICKUP_STARTED','FOOD_COLLECTED','DELIVERY_STARTED'].includes(d.status) && (
                       <div className="mt-3 flex items-center gap-3 flex-wrap">
                         <Button variant={sharingId === d.id ? 'outline' : 'primary'} className="text-sm"
@@ -159,15 +202,36 @@ export const NGODashboard = () => {
 
         {/* Notifications sidebar */}
         <Card className="p-6 h-fit sticky top-24">
-          <h2 className="font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <i className="fas fa-bell text-accent"></i> Notifications
-          </h2>
-          {myNotifs.slice(0,8).map(n => (
-            <div key={n.id} className={`py-3 border-b border-gray-100 last:border-0 ${n.read ? '' : 'font-semibold'}`}>
-              <p className="text-sm text-gray-700">{n.text}</p>
-              <p className="text-xs text-gray-400 mt-0.5">{new Date(n.date).toLocaleString()}</p>
-            </div>
-          ))}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="font-bold text-gray-800 flex items-center gap-2">
+              <i className="fas fa-bell text-accent"></i> Notifications
+            </h2>
+            {myNotifs.some(n => !n.read) && (
+              <button onClick={markNotificationsRead} className="text-xs text-teal font-semibold hover:underline">Mark all read</button>
+            )}
+          </div>
+          {myNotifs.slice(0,10).map(n => {
+            const donation = donations.find(d => String(d.id) === String(n.donationId));
+            return (
+              <div key={n.id} className={`py-3 border-b border-gray-100 last:border-0 ${n.read ? '' : 'bg-teal/5 -mx-2 px-2 rounded-lg'}`}>
+                <p className="text-sm text-gray-700">{n.text}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{new Date(n.date).toLocaleString()}</p>
+                {donation && (
+                  <details className="mt-2 text-xs text-gray-600">
+                    <summary className="cursor-pointer text-teal font-semibold">View donation details</summary>
+                    {donation.imageUrl && <img src={donation.imageUrl} alt={donation.title} className="w-full max-h-32 object-cover rounded-lg my-2" onError={(e) => { e.target.style.display = 'none'; }} />}
+                    <p className="mt-1"><b>Donation ID:</b> #{String(donation.id).slice(-8)}</p>
+                    <p><b>Food:</b> {donation.title} · {donation.category} · {donation.qty}</p>
+                    <p><b>Pickup:</b> {donation.location}</p>
+                    <p><b>Destination:</b> {donation.deliveryLocation || 'Not set yet'}</p>
+                    <p className="mt-1 flex items-center gap-2"><b>Status:</b> <StatusBadge status={donation.status} /></p>
+                    {donation.volunteerId && <p className="text-purple-700 font-semibold"><b>Accepted by</b> {donation.volunteerName}</p>}
+                    {donation.status === 'COMPLETED' && <p className="text-green-700 font-semibold mt-1">✓ Completed {donation.completedAt ? new Date(donation.completedAt).toLocaleString() : ''}</p>}
+                  </details>
+                )}
+              </div>
+            );
+          })}
           {myNotifs.length === 0 && <p className="text-sm text-gray-400 italic">No notifications.</p>}
         </Card>
       </div>

@@ -137,11 +137,13 @@ export const StatusBadge = ({ status }) => {
     PICKUP_STARTED:     'bg-orange-100 text-orange-800 border-orange-200',
     FOOD_COLLECTED:     'bg-yellow-100 text-yellow-800 border-yellow-200',
     DELIVERY_STARTED:   'bg-indigo-100 text-indigo-800 border-indigo-200',
-    DELIVERED:          'bg-green-100 text-green-800 border-green-200',
+      DELIVERED:          'bg-green-100 text-green-800 border-green-200',
+      COMPLETED:          'bg-green-100 text-green-800 border-green-200',
   };
   const icons = {
     AVAILABLE: 'fa-circle-check', EXPIRED: 'fa-circle-xmark',
-    DELIVERED: 'fa-truck-fast', NGO_ACCEPTED: 'fa-handshake',
+      DELIVERED: 'fa-truck-fast', NGO_ACCEPTED: 'fa-handshake',
+      COMPLETED: 'fa-circle-check',
     VOLUNTEER_ASSIGNED: 'fa-car', DELIVERY_STARTED: 'fa-route',
   };
   return (

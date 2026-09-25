@@ -21,7 +21,6 @@ const DashboardLayout = ({ role, children }) => {
   const { logout, currentUser } = useGlobalState();
 
   const allLinks = [
-    { roles:['NGO','VOLUNTEER','ADMIN'], to:`/${role.toLowerCase()}/dashboard`, label:'Dashboard', icon:'fa-house' },
     { roles:['DONOR'], to:'/donor/donate', label:'Donate Food', icon:'fa-plus-circle' },
   ];
   const links = allLinks.filter(l => l.roles.includes(role));
@@ -43,12 +42,6 @@ const DashboardLayout = ({ role, children }) => {
             </Link>
           ))}
         </nav>
-        <div className="p-4 border-t border-gray-100">
-          <Link to="/" onClick={logout}
-            className="flex items-center gap-3 px-4 py-2.5 rounded-2xl text-red-500 hover:bg-red-50 transition-colors font-medium text-sm">
-            <i className="fas fa-right-from-bracket w-4 text-center"></i>Logout
-          </Link>
-        </div>
       </aside>
 
       {/* Mobile top bar for role */}
@@ -59,10 +52,6 @@ const DashboardLayout = ({ role, children }) => {
             <i className={`fas ${l.icon} mb-1 text-base`}></i>{l.label}
           </Link>
         ))}
-        <Link to="/" onClick={logout}
-          className="flex-1 flex flex-col items-center py-3 text-red-400 hover:text-red-600 text-xs font-medium">
-          <i className="fas fa-right-from-bracket mb-1 text-base"></i>Logout
-        </Link>
       </div>
 
       {/* Content */}
@@ -130,6 +119,8 @@ function App() {
           <Route path="/admin/dashboard" element={<ProtectedRoute allowedRoles={['ADMIN']}><AdminDashboard /></ProtectedRoute>} />
           <Route path="/donor/profile" element={<ProtectedRoute allowedRoles={['DONOR']}><MyProfile /></ProtectedRoute>} />
           <Route path="/ngo/profile" element={<ProtectedRoute allowedRoles={['NGO']}><MyProfile /></ProtectedRoute>} />
+          <Route path="/volunteer/profile" element={<ProtectedRoute allowedRoles={['VOLUNTEER']}><MyProfile /></ProtectedRoute>} />
+          <Route path="/admin/profile" element={<ProtectedRoute allowedRoles={['ADMIN']}><MyProfile /></ProtectedRoute>} />
 
           {/* 404 */}
           <Route path="*" element={<NotFound />} />

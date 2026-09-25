@@ -58,6 +58,9 @@ export const GlobalProvider = ({ children }) => {
 
     const onNotification = (notif) => {
       setNotifications((prev) => [{ ...notif, id: notif._id, date: notif.createdAt }, ...prev]);
+      // Notifications can reference a donation the list doesn't have yet
+      // (e.g. a request just shared with this volunteer) — fetch it right away.
+      if (notif?.donationId) refreshDonations();
     };
     const onDonationUpdated = () => refreshDonations();
 
@@ -76,6 +79,7 @@ export const GlobalProvider = ({ children }) => {
     setCurrentUser(user);
     connectSocket(user.id);
     refreshNotifications();
+    refreshDonations(); // role-scoped list must load right after login, not only on F5
     return user;
   };
 

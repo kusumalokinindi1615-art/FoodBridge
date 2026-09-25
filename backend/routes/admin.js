@@ -16,7 +16,7 @@ router.get('/stats', async (req, res) => {
       User.countDocuments({ role: 'NGO' }),
       User.countDocuments({ role: 'VOLUNTEER' }),
       Donation.countDocuments({}),
-      Donation.countDocuments({ status: 'DELIVERED' }),
+      Donation.countDocuments({ status: { $in: ['DELIVERED', 'COMPLETED'] } }),
       Donation.countDocuments({ status: { $in: ['NGO_ACCEPTED', 'VOLUNTEER_ASSIGNED', 'PICKUP_STARTED', 'FOOD_COLLECTED', 'DELIVERY_STARTED'] } }),
       Donation.countDocuments({ status: 'EXPIRED' }),
     ]);

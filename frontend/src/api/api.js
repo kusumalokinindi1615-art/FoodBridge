@@ -37,6 +37,9 @@ export const donationsAPI = {
   tracking: async (id) => (await api.get(`/api/donations/${id}/tracking`)).data,
   pushNgoLocation: async (id, lat, lng) =>
     (await api.patch(`/api/donations/${id}/ngo-location`, { lat, lng })).data,
+  pushVolunteerLocation: async (id, lat, lng) =>
+    (await api.patch(`/api/donations/${id}/volunteer-location`, { lat, lng })).data,
+  shareWithVolunteers: async (id) => (await api.post(`/api/donations/${id}/share`)).data,
 };
 
 /* ─── Notifications ──────────────────────────────────── */

@@ -10,6 +10,8 @@ const notificationSchema = new mongoose.Schema(
       default: 'SYSTEM',
     },
     donationId: { type: mongoose.Schema.Types.ObjectId, ref: 'Donation' },
+    /** Denormalized snapshot for real-time "Accepted by {name}" display without a refetch */
+    acceptedByName: { type: String },
     read: { type: Boolean, default: false },
   },
   { timestamps: true }

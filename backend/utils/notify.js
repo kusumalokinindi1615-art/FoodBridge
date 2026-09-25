@@ -4,7 +4,7 @@ const User = require('../models/User');
  * Notify: creates DB notification and emits it over Socket.IO in real time.
  * userId can be a real ObjectId or the special 'ROLE::NGO' broadcast to all users with a role.
  */
-const notify = async (io, { userId, text, type = 'SYSTEM', donationId = null }) => {
+const notify = async (io, { userId, text, type = 'SYSTEM', donationId = null, ...extra }) => {
   try {
     if (!userId) return;
 
@@ -15,7 +15,7 @@ const notify = async (io, { userId, text, type = 'SYSTEM', donationId = null }) 
       if (!users.length) return;
       const Notification = require('../models/Notification');
       const docs = await Notification.insertMany(
-        users.map(u => ({ userId: u._id, text, type, donationId }))
+        users.map(u => ({ userId: u._id, text, type, donationId, ...extra }))
       );
       docs.forEach(doc =>
         io?.to(`user:${doc.userId}`).emit('notification', doc)
@@ -24,7 +24,7 @@ const notify = async (io, { userId, text, type = 'SYSTEM', donationId = null }) 
     }
 
     const Notification = require('../models/Notification');
-    const doc = await Notification.create({ userId, text, type, donationId });
+    const doc = await Notification.create({ userId, text, type, donationId, ...extra });
     io?.to(`user:${doc.userId}`).emit('notification', doc);
   } catch (err) {
     console.error('notify error:', err.message);

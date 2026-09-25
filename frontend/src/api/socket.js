@@ -5,15 +5,14 @@ const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 let socket = null;
 
-/** Connect (once) and join the user's private notification room */
-export const connectSocket = (userId) => {
+/** Connect using the stored JWT; the server joins the authenticated user's room. */
+export const connectSocket = () => {
   if (!socket) {
     socket = io(SOCKET_URL, {
       auth: { token: getToken() },
       transports: ['websocket', 'polling'],
     });
   }
-  if (userId) socket.emit('join', userId);
   return socket;
 };
 

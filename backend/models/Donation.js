@@ -8,6 +8,7 @@ const STATUS_FLOW = [
   'FOOD_COLLECTED',
   'DELIVERY_STARTED',
   'DELIVERED',
+  'COMPLETED',
   'EXPIRED',
   'CLOSED',
 ];
@@ -45,6 +46,14 @@ const donationSchema = new mongoose.Schema(
     },
     volunteerId: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
     volunteerName: { type: String },
+    sharedWithVolunteers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+    volunteerLocation: {
+      lat: { type: Number },
+      lng: { type: Number },
+      updatedAt: { type: Date },
+    },
+    pickedUpAt: { type: Date },
+    completedAt: { type: Date },
     deliveredAt: { type: Date },
   },
   { timestamps: true }

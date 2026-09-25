@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { protect } = require('../middleware/auth');
+const { geocodeAddress } = require('../utils/geocode');
 
 const router = express.Router();
 
@@ -36,6 +37,14 @@ router.post('/register', async (req, res) => {
     const exists = await User.findOne({ email: email.toLowerCase() });
     if (exists) return res.status(409).json({ message: 'Email already registered' });
 
+    let locationCoords = lat != null && lng != null
+      ? { type: 'Point', coordinates: [Number(lng), Number(lat)] }
+      : undefined;
+    if (!locationCoords && role === 'NGO' && location) {
+      const coords = await geocodeAddress(location);
+      if (coords) locationCoords = { type: 'Point', coordinates: [coords.lng, coords.lat] };
+    }
+
     const user = await User.create({
       name,
       email,
@@ -44,8 +53,7 @@ router.post('/register', async (req, res) => {
       role,
       location,
       contactPerson,
-      locationCoords:
-        lat != null && lng != null ? { type: 'Point', coordinates: [Number(lng), Number(lat)] } : undefined,
+      locationCoords,
     });
 
     res.status(201).json({
@@ -98,6 +106,10 @@ router.patch('/profile', protect, async (req, res) => {
     allowed.forEach((f) => {
       if (req.body[f] !== undefined) updates[f] = req.body[f];
     });
+    if (updates.location && req.user.role === 'NGO' && updates.location !== req.user.location) {
+      const coords = await geocodeAddress(updates.location);
+      if (coords) updates.locationCoords = { type: 'Point', coordinates: [coords.lng, coords.lat] };
+    }
     if (updates.name !== undefined && !String(updates.name).trim()) {
       return res.status(400).json({ message: 'Name cannot be empty' });
     }

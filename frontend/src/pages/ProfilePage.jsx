@@ -88,6 +88,7 @@ export const MyProfile = () => {
   }
 
   const isNGO = profile.role === 'NGO';
+  const roleLabels = { DONOR: 'Donor', NGO: 'NGO', VOLUNTEER: 'Volunteer', ADMIN: 'Admin' };
   const rows = [
     { label: 'Name', value: profile.name },
     ...(isNGO && profile.contactPerson ? [{ label: 'Contact Person', value: profile.contactPerson }] : []),
@@ -114,7 +115,7 @@ export const MyProfile = () => {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-gray-900">My Profile</h1>
-              <p className="text-sm text-gray-500">{isNGO ? 'NGO account' : 'Donor account'}</p>
+              <p className="text-sm text-gray-500">{roleLabels[profile.role] || profile.role} account</p>
             </div>
           </div>
           {!editing && (

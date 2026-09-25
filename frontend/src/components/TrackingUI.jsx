@@ -1,8 +1,22 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, StatusBadge } from './PublicUI';
+import { donationsAPI } from '../api/api';
 
 /* ─── DonationTimeline (Vertical) ───────────────────── */
 export const TrackingUI = ({ donation }) => {
+  const [gps, setGps] = useState(null);
+  useEffect(() => {
+    let stopped = false;
+    const load = async () => {
+      try {
+        const { tracking } = await donationsAPI.tracking(donation.id);
+        if (!stopped) setGps(tracking?.volunteerLocation || null);
+      } catch { if (!stopped) setGps(null); }
+    };
+    load();
+    const timer = setInterval(load, 15000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, [donation.id]);
   const steps = [
     { key: 'POSTED',             label: 'Food Posted',         icon: 'fa-box-open' },
     { key: 'NGO_ACCEPTED',       label: 'NGO Accepted',        icon: 'fa-handshake' },
@@ -11,6 +25,7 @@ export const TrackingUI = ({ donation }) => {
     { key: 'FOOD_COLLECTED',     label: 'Food Collected',      icon: 'fa-basket-shopping' },
     { key: 'DELIVERY_STARTED',   label: 'Out for Delivery',    icon: 'fa-truck' },
     { key: 'DELIVERED',          label: 'Delivered ✓',         icon: 'fa-circle-check' },
+    { key: 'COMPLETED',          label: 'Completed ✓',         icon: 'fa-circle-check' },
   ];
 
   const order = steps.map(s => s.key);
@@ -84,6 +99,13 @@ export const TrackingUI = ({ donation }) => {
             <p className="font-bold">Volunteer is on the way!</p>
             <p className="text-xs opacity-75">Simulated tracking — en route to destination.</p>
           </div>
+        </div>
+      )}
+      {gps?.lat != null && (
+        <div className="mt-5 rounded-xl bg-teal/5 border border-teal/20 p-3 text-sm">
+          <p className="font-semibold text-teal">{donation.volunteerName || 'Assigned volunteer'} · live delivery location</p>
+          <p className="text-gray-600">{Number(gps.lat).toFixed(5)}, {Number(gps.lng).toFixed(5)}{gps.updatedAt ? ` · ${new Date(gps.updatedAt).toLocaleTimeString()}` : ''}</p>
+          <a className="text-teal underline" target="_blank" rel="noreferrer" href={`https://www.openstreetmap.org/?mlat=${gps.lat}&mlon=${gps.lng}#map=15/${gps.lat}/${gps.lng}`}>View on map</a>
         </div>
       )}
     </Card>
