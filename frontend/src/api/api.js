@@ -16,6 +16,8 @@ export const authAPI = {
   register: async (payload) => (await api.post('/api/auth/register', payload)).data,
   me: async () => (await api.get('/api/auth/me')).data,
   updateProfile: async (payload) => (await api.patch('/api/auth/profile', payload)).data,
+  forgotPassword: async (email) => (await api.post('/api/auth/forgot-password', { email })).data,
+  resetPassword: async (token, password) => (await api.post(`/api/auth/reset-password/${token}`, { password })).data,
 };
 
 /* ─── Uploads (multipart) ───────────────────────────── */

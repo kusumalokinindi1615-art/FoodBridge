@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import { Button, BotanicalBg } from '../components/PublicUI';
 import { FormInput, SelectInput, Modal } from '../components/PublicUI2';
 import { useGlobalState } from '../context/GlobalState';
 import { useGeolocation } from '../hooks/useGeolocation';
 
 /* ─── Panel wrapper shared by Login & Register ────── */
-const AuthPanel = ({ children, image, quote }) => (
+export const AuthPanel = ({ children, image, quote }) => (
   <div className="min-h-screen bg-background flex items-center justify-center p-4 relative overflow-hidden">
     {/* subtle botanical bg */}
     <div className="absolute inset-0 pointer-events-none">
@@ -56,10 +56,11 @@ export const Login = () => {
   const [username, setUsername] = useState('');
   const [role, setRole] = useState('');
   const [password, setPassword] = useState('');
-  const [showPwd, setShowPwd] = useState(false);
   const [errors, setErrors] = useState({});
   const [serverError, setServerError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const location = useLocation();
+  const flash = location.state?.flash;
 
   const validate = () => {
     const e = {};
@@ -101,6 +102,12 @@ export const Login = () => {
         <h2 className="text-2xl font-extrabold text-gray-900 mb-1">Welcome back</h2>
         <p className="text-sm text-gray-400 mb-8">Sign in to your FoodBridge account.</p>
 
+        {flash && (
+          <div className="mb-4 text-sm text-teal bg-teal/5 border border-teal/20 rounded-xl px-4 py-2.5">
+            <i className="fas fa-circle-check mr-1.5"></i>{flash}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit}>
           <FormInput label="Username" type="text" value={username} onChange={e => setUsername(e.target.value)} error={errors.username} />
           <div className="mb-4">
@@ -119,13 +126,7 @@ export const Login = () => {
             </select>
             {errors.role && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><i className="fas fa-circle-exclamation"></i>{errors.role}</p>}
           </div>
-          <div className="relative">
-            <FormInput label="Password" type={showPwd ? 'text' : 'password'} value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />
-            <button type="button" onClick={() => setShowPwd(!showPwd)}
-              className="absolute right-4 top-9 text-gray-400 hover:text-teal text-sm">
-              <i className={`fas ${showPwd ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-            </button>
-          </div>
+          <FormInput label="Password" type="password" value={password} onChange={e => setPassword(e.target.value)} error={errors.password} />
           {serverError && (
             <div className="mt-3 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-2.5">
               <i className="fas fa-circle-exclamation mr-1.5"></i>{serverError}
@@ -135,7 +136,7 @@ export const Login = () => {
             <label className="flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
               <input type="checkbox" className="w-4 h-4 accent-teal rounded"/> Remember me
             </label>
-            <a href="#" className="text-sm text-teal font-semibold hover:underline">Forgot password?</a>
+            <Link to="/forgot-password" className="text-sm text-teal font-semibold hover:underline">Forgot password?</Link>
           </div>
           <Button type="submit" className="w-full py-3 text-sm" disabled={submitting}>
             {submitting ? <><i className="fas fa-spinner fa-spin mr-2"></i>Signing in…</> : 'Sign In'}

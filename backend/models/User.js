@@ -25,6 +25,8 @@ const userSchema = new mongoose.Schema(
       coordinates: { type: [Number], default: [0, 0] },
     },
     isVerified: { type: Boolean, default: false }, // NGOs verified by admin
+    resetPasswordToken: { type: String, select: false }, // SHA-256 hash of the one-time token
+    resetPasswordExpires: { type: Date, select: false },
   },
   { timestamps: true }
 );

@@ -126,6 +126,7 @@ export const GlobalProvider = ({ children }) => {
     <GlobalContext.Provider
       value={{
         currentUser,
+        setCurrentUser,
         booting,
         login,
         logout,

@@ -7,6 +7,7 @@ import { useGlobalState } from './context/GlobalState';
 import { Home, About } from './pages/MarketingPages';
 import { AvailableFood, FoodDetails } from './pages/FoodPages';
 import { Login, Register } from './pages/AuthPages';
+import { ForgotPassword, ResetPassword } from './pages/ForgotResetPages';
 import { NotFound } from './pages/NotFound';
 
 // Role Dashboards
@@ -108,6 +109,8 @@ function App() {
           <Route path="/food/:id" element={<FoodDetails />} />
           <Route path="/food" element={<AvailableFood />} />
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/register/:roleType" element={<Register />} />
           <Route path="/register" element={<Navigate to="/register/donor" replace />} />
 

@@ -1,17 +1,37 @@
 import React from 'react';
 
 /* ─── FormInput ─────────────────────────────────────── */
-export const FormInput = ({ label, error, ...props }) => (
-  <div className="mb-4">
-    {label && <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>}
-    <input
-      className={`w-full px-4 py-3 text-sm rounded-2xl border transition-all bg-gray-50 focus:bg-white focus:outline-none focus:ring-2
-        ${error ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-teal focus:border-transparent'}`}
-      {...props}
-    />
-    {error && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><i className="fas fa-circle-exclamation"></i>{error}</p>}
-  </div>
-);
+/* Password inputs get a built-in eye toggle (show/hide). type="button" so it never submits the form. */
+export const FormInput = ({ label, error, type, ...props }) => {
+  const [showPwd, setShowPwd] = React.useState(false);
+  const isPassword = type === 'password';
+
+  return (
+    <div className="mb-4">
+      {label && <label className="block text-sm font-semibold text-gray-700 mb-1.5">{label}</label>}
+      <div className="relative">
+        <input
+          type={isPassword ? (showPwd ? 'text' : 'password') : type}
+          className={`w-full px-4 py-3 text-sm rounded-2xl border transition-all bg-gray-50 focus:bg-white focus:outline-none focus:ring-2
+            ${isPassword ? 'pr-11' : ''}
+            ${error ? 'border-red-400 focus:ring-red-400' : 'border-gray-200 focus:ring-teal focus:border-transparent'}`}
+          {...props}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            aria-label={showPwd ? 'Hide password' : 'Show password'}
+            onClick={() => setShowPwd(s => !s)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 w-9 h-9 flex items-center justify-center text-gray-400 hover:text-teal transition-colors"
+          >
+            <i className={`fas ${showPwd ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-1.5 text-xs text-red-600 flex items-center gap-1"><i className="fas fa-circle-exclamation"></i>{error}</p>}
+    </div>
+  );
+};
 
 /* ─── SelectInput ───────────────────────────────────── */
 export const SelectInput = ({ label, options = [], error, ...props }) => (
