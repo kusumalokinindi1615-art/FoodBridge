@@ -55,6 +55,7 @@ export const adminAPI = {
   stats: async () => (await api.get('/api/admin/stats')).data,
   users: async () => (await api.get('/api/admin/users')).data,
   donations: async () => (await api.get('/api/admin/donations')).data,
+  activity: async () => (await api.get('/api/admin/activity')).data,
   verifyUser: async (id, isVerified = true) =>
     (await api.patch(`/api/admin/users/${id}/verify`, { isVerified })).data,
   deleteUser: async (id) => (await api.delete(`/api/admin/users/${id}`)).data,
