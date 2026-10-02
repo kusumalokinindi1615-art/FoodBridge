@@ -55,9 +55,15 @@ export const adminAPI = {
   stats: async () => (await api.get('/api/admin/stats')).data,
   users: async () => (await api.get('/api/admin/users')).data,
   donations: async () => (await api.get('/api/admin/donations')).data,
+  activity: async () => (await api.get('/api/admin/activity')).data,
+  createUser: async (payload) => (await api.post('/api/admin/users', payload)).data,
+  updateUser: async (id, payload) => (await api.patch(`/api/admin/users/${id}`, payload)).data,
   verifyUser: async (id, isVerified = true) =>
     (await api.patch(`/api/admin/users/${id}/verify`, { isVerified })).data,
   deleteUser: async (id) => (await api.delete(`/api/admin/users/${id}`)).data,
+  createDonation: async (payload) => (await api.post('/api/admin/donations', payload)).data,
+  updateDonation: async (id, payload) => (await api.patch(`/api/admin/donations/${id}`, payload)).data,
+  deleteDonation: async (id) => (await api.delete(`/api/admin/donations/${id}`)).data,
 };
 
 /* ─── Public stats (landing page) ────────────────────── */
