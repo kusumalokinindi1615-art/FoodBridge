@@ -3,6 +3,13 @@ import { Link } from 'react-router-dom';
 import { Button, PageContainer, SectionHeading, BotanicalBg } from '../components/PublicUI';
 import { statsAPI } from '../api/api';
 
+/* ── Real photos from frontend/src/assets — auto-picked and sorted 1 → 7 ──
+   Vite bundles every matching file, so adding 5.jfif later appears here automatically. */
+const homePhotoModules = import.meta.glob('../assets/*.{jfif,jpg,jpeg,png,webp}', { eager: true, import: 'default' });
+const homePhotos = Object.keys(homePhotoModules)
+  .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+  .map((p) => homePhotoModules[p]);
+
 /* ─── HOME ──────────────────────────────────────────── */
 export const Home = () => {
   const [stats, setStats] = useState({ mealsShared: 0, activeDonors: 0, partnerNGOs: 0, volunteers: 0 });
@@ -164,6 +171,38 @@ export const Home = () => {
               </div>
               <h3 className="text-xl font-bold text-gray-900 mb-2">{s.label}</h3>
               <p className="text-gray-500 text-sm leading-relaxed max-w-xs mx-auto">{s.desc}</p>
+            </div>
+          ))}
+        </div>
+      </PageContainer>
+    </section>
+
+    {/* ── Real Food. Real People. Real Impact. (photo gallery) ── */}
+    <section className="py-20 bg-white">
+      <PageContainer>
+        <SectionHeading
+          title="Real Food. Real People. Real Impact."
+          subtitle="Connecting surplus food with communities through donors, NGOs and volunteers."
+        />
+
+        {/* Hide this gallery's scrollbar only (page scrolling is unaffected) */}
+        <style>{`.fb-photo-scroll{scrollbar-width:none;-ms-overflow-style:none;}.fb-photo-scroll::-webkit-scrollbar{display:none;}`}</style>
+
+        <div
+          className="fb-photo-scroll flex gap-5 sm:gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth py-1"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {homePhotos.map((src, i) => (
+            <div
+              key={i}
+              className="snap-start flex-none w-[78%] sm:w-[46%] lg:w-[31%] rounded-3xl overflow-hidden shadow-card border border-gray-100/60 bg-gray-50"
+            >
+              <img
+                src={src}
+                alt={`FoodBridge community impact ${i + 1}`}
+                loading="lazy"
+                className="w-full h-56 sm:h-64 lg:h-72 object-cover"
+              />
             </div>
           ))}
         </div>
